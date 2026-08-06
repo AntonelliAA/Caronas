@@ -93,7 +93,12 @@ A day counts for a person when all four are true:
 1. the weekday is on their schedule;
 2. the date is inside their range (`start_date` … `end_date`);
 3. it is not a holiday, or it is one and you marked that the ride happened;
-4. they did not mark an absence.
+4. nobody marked otherwise.
+
+Rule one has an escape hatch. Tap a cell in the ledger on a day that is not
+theirs and it counts as a ride anyway, which is what happens when someone comes
+along outside their usual days. Tapping again undoes it. In the ledger a normal
+ride is a filled dot and one of these is the same colour, hollow.
 
 The large number on screen is what **already happened** up to today. The "se o
 mês fechar como está" figure beside it projects to the end of the month. They are
@@ -121,7 +126,8 @@ Worth being explicit, because this is not a banking app:
 - **Locked:** price per day, schedules, no-ride days, and payment marking. Driver
   login only.
 - **Open to anyone holding any link:** reading the month, and marking or
-  unmarking an absence for anyone.
+  unmarking an absence for anyone. Not adding a ride: every write reachable
+  without a login takes a day off a bill, and none of them put one on.
 
 So the link is the password, and it does not protect against someone already in
 the group. For four people who share a car every day that is the right line. If

@@ -25,15 +25,18 @@ These break silently. The site still renders and the money comes out wrong.
 1. **Never `new Date('YYYY-MM-DD')`.** It parses as UTC and returns the previous
    day in Brazil. Use `parseYmd` from `src/lib/rides.ts`.
 2. **Money goes through `money()`** in the same file. Never a raw float.
-3. **Ride math stays pure** and stays in `src/lib/rides.ts`. No DOM, no fetch, no
+3. **Only the driver can raise a bill.** The `anon` policies on `day_marks` are
+   pinned to `rode = false`. Adding a ride is `rode = true` and needs the login.
+   Keep it that way when touching policies.
+4. **Ride math stays pure** and stays in `src/lib/rides.ts`. No DOM, no fetch, no
    `Date.now()` inside it, because `today` is always a parameter. Every branch you add
    there needs a case in `test/rides.test.mjs`.
-4. **RLS on every new table**, plus its policies, in `schema.sql`. A table without
+5. **RLS on every new table**, plus its policies, in `schema.sql`. A table without
    RLS is world-writable by anyone holding the anon key.
-5. **Fare, schedule, no-ride days, and payments are driver-only** (`to
+6. **Fare, schedule, no-ride days, and payments are driver-only** (`to
    authenticated`). Absences are deliberately open, which is what lets a
    passenger use their link without a login.
-6. **Page `<style>` blocks are `is:global`.** Astro scopes styles to elements in
+7. **Page `<style>` blocks are `is:global`.** Astro scopes styles to elements in
    the template, and most of the UI is built in JS at runtime, so scoped rules
    never reach it.
 

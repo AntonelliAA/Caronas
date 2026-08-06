@@ -49,9 +49,11 @@ Four tables. `schema.sql` is the source of truth; this is the reasoning.
 adding someone on the 12th would backfill the whole month and overcharge them.
 `end_date` is null while they still ride.
 
-**`absences`**: `(passenger_id, day)` as the primary key, so marking twice is
-impossible and unmarking is a plain delete. Rows only exist for exceptions,
-which is why the table stays tiny.
+**`day_marks`**: `(passenger_id, day)` as the primary key, so marking twice is
+impossible and unmarking is a plain delete. A row is an exception to somebody's
+schedule in either direction: `rode = false` is an absence, `rode = true` is a
+ride on a day that is not theirs. No row means the weekly schedule decides,
+which is why the table stays tiny no matter how long the carpool runs.
 
 **`day_overrides`**: `(day, has_ride)`. One table covers both directions: a
 weekday where nobody rode (car in the shop, driver on vacation, a municipal
@@ -70,7 +72,12 @@ A day counts as a ride for a person when all four hold:
 2. the date falls within `start_date … end_date`;
 3. `isRideDay(day)` is true, meaning not a holiday unless an override says a
    ride happened;
-4. no absence row exists for that person and day.
+4. no `day_marks` row says otherwise.
+
+Point one bends: a row with `rode = true` counts the day even when the weekday
+is not on their schedule, which is how a one-off ride gets recorded. Points two
+and three do not bend. A mark cannot pull somebody in before they joined, and it
+cannot conjure a ride on a day nobody drove.
 
 `report()` returns two numbers rather than one. `done` counts rides up to today
 and is what the person owes right now. `planned` counts the whole month. On the
@@ -102,7 +109,9 @@ nothing else.
 
 The consequence is written down honestly in the README: anyone holding any link
 can read the month and mark an absence for anyone. What that person cannot do is
-change a fare, a schedule, or a payment. For four people who share a car every
+change a fare, a schedule, or a payment, or add a ride. Every write reachable
+without a login lowers a bill; the policies on `day_marks` pin the anon role to
+`rode = false` precisely so that none of them can raise one. For four people who share a car every
 day, that is the right line. The upgrade path, if the group ever grows past
 people who know each other, is Supabase Auth for everyone and policies keyed on
 `auth.uid()`.
