@@ -1051,11 +1051,11 @@ import Wheel from '../components/Wheel.astro';
 
   async function compartilhar(p: PassengerRow) {
     const url = linkDe(p);
-    const text = `${p.name}, esse é o seu link das caronas. Salve na tela de início: quando não for num dia, marque aqui que eu já desconto.`;
+    const text = `${p.name}, esse é o seu link das caronas. Salve na tela de início: quando não for num dia, marque aqui que eu já desconto.\n${url}`;
     try {
-      if (navigator.share) await navigator.share({ title: 'Caronas', text, url });
+      if (navigator.share) await navigator.share({ title: 'Caronas', text });
       else {
-        await navigator.clipboard.writeText(`${text}\n${url}`);
+        await navigator.clipboard.writeText(text);
         aviso('Link copiado.', true);
       }
     } catch {
