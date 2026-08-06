@@ -181,6 +181,15 @@ export function ledgerDays(
   );
 }
 
+/**
+ * The Monday that opens the week a day belongs to. Weeks are the unit a
+ * carpool is planned in, so the ledger groups by them.
+ */
+export function weekStart(day: string): string {
+  const d = parseYmd(day);
+  return addDays(day, -((d.getDay() + 6) % 7));
+}
+
 const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 export function brl(n: number): string {

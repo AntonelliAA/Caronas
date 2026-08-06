@@ -15,6 +15,7 @@ import {
   parseYmd,
   report,
   weekdayList,
+  weekStart,
   ymd,
 } from '../src/lib/rides.ts';
 import { easter, feriados } from '../src/lib/feriados.ts';
@@ -188,6 +189,13 @@ test('ledgerDays keeps a day somebody actually rode on', () => {
   const rows = ledgerDays([marcos], days, marks);
   assert.equal(rows.length, 14);
   assert.ok(rows.includes('2026-08-08'));
+});
+
+test('weekStart finds the Monday that opens the week', () => {
+  assert.equal(weekStart('2026-08-06'), '2026-08-03'); // Thursday -> Monday
+  assert.equal(weekStart('2026-08-03'), '2026-08-03'); // Monday is its own start
+  assert.equal(weekStart('2026-08-09'), '2026-08-03'); // Sunday closes that week
+  assert.equal(weekStart('2026-08-01'), '2026-07-27'); // crosses into July
 });
 
 test('weekdayList reads like speech', () => {
