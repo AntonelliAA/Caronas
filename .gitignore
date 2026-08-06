@@ -1,0 +1,38 @@
+# build output
+dist/
+.astro/
+.output/
+.vercel/
+.netlify/
+
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# secrets — the anon key is public by design, but .env is still not history
+.env
+.env.*
+!.env.example
+
+# logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# editors
+.vscode/*
+!.vscode/extensions.json
+.idea/
+*.swp
+
+# os
+.DS_Store
+Thumbs.db
+
+# scratch: screenshot harness files land in dist/, but keep the pattern
+# in case one is ever written next to the source
+_shot*.html
+_light.html
