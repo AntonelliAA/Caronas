@@ -72,20 +72,27 @@ alter table day_marks     enable row level security;
 alter table day_overrides enable row level security;
 alter table payments      enable row level security;
 
--- Dropped and deliberately not recreated: anon has no business reading names,
--- fares, or other people's tokens. The drop has to stay here so a database
--- that ran the earlier version loses it on the next run.
-drop policy if exists "public read"         on passengers;
-drop policy if exists "public read"         on day_marks;
-drop policy if exists "public read"         on day_overrides;
-drop policy if exists "public read"         on payments;
-drop policy if exists "passenger marks"     on day_marks;
-drop policy if exists "passenger unmarks"   on day_marks;
-drop policy if exists "driver"              on passengers;
-drop policy if exists "driver"              on day_marks;
-drop policy if exists "driver"              on day_overrides;
-drop policy if exists "driver"              on payments;
-drop policy if exists "passenger corrects"  on day_marks;
+-- Everything is dropped by table, not by name. Dropping a list of known names
+-- only undoes what this file wrote, and the access that actually leaked was a
+-- select policy on passengers created in the table editor under a name this
+-- file never knew. What follows the drop is the whole intended policy set, so
+-- the file declares the end state instead of trusting what a human clicked.
+do $$
+declare pol record;
+begin
+  for pol in
+    select policyname, tablename
+    from pg_policies
+    where schemaname = 'public'
+      and tablename in ('passengers', 'day_marks', 'day_overrides', 'payments')
+  loop
+    execute format('drop policy %I on public.%I', pol.policyname, pol.tablename);
+  end loop;
+end $$;
+
+-- passengers gets no policy at all below: RLS is on and anon has no business
+-- reading names, fares, or other people's tokens. The only way in is
+-- passenger_by_token, further down.
 
 -- The month has to render without a login, so the day tables stay readable.
 -- They are keyed by passenger uuid and say nothing on their own once the
@@ -147,6 +154,14 @@ grant execute on function public.passenger_by_token(text) to anon, authenticated
 -- happens to reload on its own.
 notify pgrst, 'reload schema';
 
+-- What actually ended up on the database, printed because the one bug this
+-- file has ever shipped was a policy nobody knew was there. Expect eight rows
+-- and not one of them on passengers.
+select tablename, policyname, roles, cmd
+from pg_policies
+where schemaname = 'public'
+order by tablename, policyname;
+
 -- ---------------------------------------------------------------- example ---
 -- Uncomment and adjust to start with people already registered.
 --
@@ -166,6 +181,10 @@ notify pgrst, 'reload schema';
 --
 -- Then re-run the whole policy section, which is safe on its own.
 --
--- If you ran an earlier version where anon could read passengers, the policy
--- section above already drops it: "public read" on passengers is gone and is
--- not recreated. Re-running this whole file is enough.
+-- If anon could read passengers on your database, re-running this whole file
+-- closes it whatever the policy was called. Then rotate, because a token that
+-- was served publicly is spent:
+--
+-- update passengers set token = encode(gen_random_bytes(8), 'hex');
+--
+-- and resend every personal link from the driver screen.
