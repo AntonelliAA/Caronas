@@ -234,7 +234,7 @@ import Wheel from '../components/Wheel.astro';
     ymd,
   } from '../lib/rides';
   import { feriados } from '../lib/feriados';
-  import { configured, loadMonth, loadPassengerByToken, setAbsence, type PassengerRow } from '../lib/db';
+  import { configured, loadMonth, loadPassengerByToken, setMark, type PassengerRow } from '../lib/db';
 
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -265,7 +265,8 @@ import Wheel from '../components/Wheel.astro';
     dia >= eu.start_date &&
     (!eu.end_date || dia <= eu.end_date);
 
-  const faltou = (dia: string) => mes.absences.get(eu.id)?.has(dia) ?? false;
+  const marcas = () => mes.marks.get(eu.id) ?? new Map<string, boolean>();
+  const faltou = (dia: string) => marcas().get(dia) === false;
 
   function rotulo(dia: string) {
     const d = parseYmd(dia);
@@ -300,7 +301,7 @@ import Wheel from '../components/Wheel.astro';
 
     renderAcoes();
 
-    const r = report(eu, dias, mes.absences.get(eu.id) ?? new Set(), mes.overrides, fer, hoje);
+    const r = report(eu, dias, marcas(), mes.overrides, fer, hoje);
     $('resumo-valor').textContent = brl(r.total);
     const partes = [`${r.done} ${r.done === 1 ? 'carona' : 'caronas'} × ${brl(eu.fare)}`];
     if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'}`);
@@ -350,7 +351,7 @@ import Wheel from '../components/Wheel.astro';
       b.className = `btn btn--block ${i === 0 ? 'btn--primary btn--lg' : 'btn--ghost'}`;
       b.dataset.marcada = marcada ? '1' : '0';
       b.textContent = marcada ? `Voltei atrás, vou ${quando}` : `Não vou ${quando}`;
-      b.onclick = () => commit(() => setAbsence(eu.id, dia, !marcada));
+      b.onclick = () => commit(() => setMark(eu.id, dia, marcada ? null : false));
       el.append(b);
     });
 
@@ -403,7 +404,7 @@ import Wheel from '../components/Wheel.astro';
         b.setAttribute('aria-pressed', String(falta));
         b.setAttribute('aria-label', `${rotulo(dia)}: ${falta ? 'faltou. Desfazer.' : 'marcar falta'}`);
         b.innerHTML = `<span class="dia__data">${rotulo(dia)}</span>${marca}<span class="dia__estado">${texto}</span>`;
-        b.onclick = () => commit(() => setAbsence(eu.id, dia, !falta));
+        b.onclick = () => commit(() => setMark(eu.id, dia, falta ? null : false));
         li.append(b);
       }
       el.append(li);

@@ -42,6 +42,15 @@ import Wheel from '../components/Wheel.astro';
       </form>
     </section>
 
+    <div id="esqueleto" hidden aria-hidden="true">
+      <div class="sk sk--linha" style="width: 40%"></div>
+      <div class="sk sk--valor"></div>
+      <div class="sk sk--linha" style="width: 65%"></div>
+      <div class="sk sk--card"></div>
+      <div class="sk sk--card"></div>
+      <div class="sk sk--card"></div>
+    </div>
+
     <div id="app" hidden>
       <nav class="mesnav">
         <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
@@ -55,7 +64,7 @@ import Wheel from '../components/Wheel.astro';
 
       <section id="hoje" class="hoje"></section>
 
-      <section class="total">
+      <section id="total-secao" class="total">
         <span class="label">a receber no mês</span>
         <p id="total-valor" class="total__valor num">—</p>
         <p id="total-linha" class="muted total__linha"></p>
@@ -68,29 +77,28 @@ import Wheel from '../components/Wheel.astro';
       </section>
 
       <section>
-        <span class="label">por pessoa</span>
+        <span class="label">quem anda junto</span>
         <ul id="pessoas" class="pessoas"></ul>
+        <button id="novo" class="btn btn--ghost btn--block" type="button">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg>
+          Adicionar pessoa
+        </button>
       </section>
 
-      <section>
+      <section id="folha-secao">
         <span class="label">folha do mês</span>
         <table class="folha">
           <thead><tr id="folha-head"></tr></thead>
           <tbody id="folha-body"></tbody>
         </table>
-        <p class="legenda">
-          <span class="mark mark--ride" style="--pc: var(--text-secondary)"></span> foi
-          <span class="mark mark--absent">✕</span> faltou
-          <span class="mark mark--off"></span> não é dia dele
-        </p>
-        <p class="legenda muted">Toque no dia para marcar que não teve carona. Toque na marca para lançar uma falta.</p>
+        <ul class="legenda">
+          <li><span class="mark" style="--pc: var(--text-secondary)"></span> foi</li>
+          <li><span class="mark mark--extra" style="--pc: var(--text-secondary)"></span> foi fora da escala</li>
+          <li><span class="mark mark--absent">✕</span> faltou</li>
+          <li><span class="mark mark--off"></span> não é dia dele</li>
+        </ul>
+        <p class="legenda-ajuda muted">Toque numa marca para trocar entre foi, faltou e fora da escala. Toque no dia para marcar que não teve carona pra ninguém.</p>
       </section>
-
-      <details class="sheet">
-        <summary>Quem anda junto</summary>
-        <ul id="cadastro" class="cadastro"></ul>
-        <button id="novo" class="btn btn--ghost btn--block" type="button">Adicionar pessoa</button>
-      </details>
     </div>
   </main>
 
@@ -244,16 +252,59 @@ import Wheel from '../components/Wheel.astro';
   .pessoas {
     display: grid;
     gap: 0.5rem;
-    margin-bottom: 1.75rem;
+    margin-bottom: 0.6rem;
+  }
+
+  #novo {
+    margin-bottom: 2rem;
   }
 
   .pessoa {
+    padding: 0.8rem 0.85rem 0.5rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .pessoa__topo {
     display: flex;
     align-items: center;
     gap: 0.75rem;
-    padding: 0.7rem 0.85rem;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-md);
+  }
+
+  .pessoa__acoes {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.4rem;
+    padding-top: 0.4rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .acao {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+    flex: 1;
+    min-height: var(--tap);
+    padding: 0 0.4rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .acao:hover {
+    background: var(--bg-card-hover);
+    color: var(--text-primary);
+  }
+
+  .acao--pago[aria-pressed='true'] {
+    color: var(--success);
+  }
+
+  .acao svg {
+    flex: none;
   }
 
   .pessoa__txt {
@@ -278,24 +329,6 @@ import Wheel from '../components/Wheel.astro';
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
-  }
-
-  .pagar {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: var(--tap);
-    height: var(--tap);
-    flex: none;
-    border-radius: var(--radius-full);
-    border: 1px solid var(--border);
-    color: var(--text-faint);
-  }
-
-  .pagar[aria-pressed='true'] {
-    border-color: var(--success);
-    color: var(--success);
-    background: color-mix(in srgb, var(--success) 12%, transparent);
   }
 
   .pessoa[data-pago='1'] .pessoa__valor {
@@ -415,7 +448,17 @@ import Wheel from '../components/Wheel.astro';
     background: var(--border-hover);
   }
 
-  .sem-carona {
+  /* An extra ride is the same hue, hollow, so it reads as "counted, but not on
+     the usual schedule" without inventing a second colour. */
+  .mark--extra {
+    background: none;
+    border: 2px solid var(--pc);
+  }
+
+  /* Has to out-specify `.folha td`, which centres every cell. Without the
+     element in the selector this row renders centred and the note drifts into
+     the middle of the table. */
+  .folha td.sem-carona {
     padding: 0.55rem 0;
     font-size: 0.72rem;
     color: var(--text-faint);
@@ -434,64 +477,98 @@ import Wheel from '../components/Wheel.astro';
 
   .legenda {
     display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1rem;
+    margin-top: 0.85rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .legenda li {
+    display: flex;
     align-items: center;
     gap: 0.4rem;
-    flex-wrap: wrap;
-    margin-top: 0.75rem;
+  }
+
+  .legenda-ajuda {
+    margin-top: 0.5rem;
     font-size: 0.75rem;
-    color: var(--text-secondary);
+    line-height: 1.45;
   }
 
-  .legenda .mark + span,
-  .legenda .mark {
-    margin-left: 0.15rem;
+  /* --- First run --- */
+  .vazio {
+    padding: 1.25rem 1rem 1.4rem;
+    border: 1px dashed var(--border-hover);
+    border-radius: var(--radius-md);
+    text-align: center;
   }
 
-  /* --- Roster --- */
-  .sheet {
-    margin-top: 2rem;
-    border-top: 1px solid var(--border);
-    padding-top: 1rem;
-  }
-
-  .sheet summary {
-    min-height: var(--tap);
-    display: flex;
-    align-items: center;
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    color: var(--text-secondary);
-    cursor: pointer;
-  }
-
-  .cadastro {
+  .vazio__linhas {
     display: grid;
-    gap: 0.5rem;
-    margin: 0.5rem 0 0.75rem;
+    gap: 0.4rem;
+    justify-items: center;
+    margin-bottom: 0.9rem;
   }
 
-  .cadastro li {
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    padding: 0.5rem 0;
-  }
-
-  .cadastro__txt {
-    flex: 1;
-    min-width: 0;
-  }
-
-  .cadastro__nome {
+  .vazio__linhas span {
     display: block;
-    font-size: 0.9rem;
+    height: 8px;
+    border-radius: var(--radius-full);
+    background: var(--border);
+  }
+
+  .vazio__linhas span:nth-child(1) { width: 45%; }
+  .vazio__linhas span:nth-child(2) { width: 65%; }
+  .vazio__linhas span:nth-child(3) { width: 30%; }
+
+  .vazio__titulo {
+    font-size: 0.95rem;
     font-weight: 600;
+    margin-bottom: 0.3rem;
   }
 
-  .cadastro__det {
-    display: block;
-    font-size: 0.75rem;
+  .vazio__texto {
+    font-size: 0.82rem;
+    line-height: 1.5;
     color: var(--text-secondary);
+  }
+
+  /* --- Loading skeleton --- */
+  #esqueleto {
+    padding-top: 1.5rem;
+  }
+
+  .sk {
+    border-radius: var(--radius-sm);
+    background: var(--bg-card-hover);
+    animation: pulso 1.4s ease-in-out infinite;
+  }
+
+  .sk--linha {
+    height: 12px;
+    margin-bottom: 0.9rem;
+  }
+
+  .sk--valor {
+    height: 44px;
+    width: 55%;
+    margin-bottom: 0.9rem;
+  }
+
+  .sk--card {
+    height: 92px;
+    margin-bottom: 0.6rem;
+    border-radius: var(--radius-md);
+  }
+
+  @keyframes pulso {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sk { animation: none; }
   }
 
   /* --- Editor dialog --- */
@@ -536,10 +613,13 @@ import Wheel from '../components/Wheel.astro';
 <script>
   import {
     brl,
+    dayState,
+    isScheduled,
     ledgerDays,
     monthDays,
     monthKey,
     monthLabel,
+    nextMark,
     parseYmd,
     report,
     weekdayList,
@@ -554,7 +634,7 @@ import Wheel from '../components/Wheel.astro';
     loadPassengers,
     removePassenger,
     savePassenger,
-    setAbsence,
+    setMark,
     setOverride,
     setPaid,
     type PassengerRow,
@@ -574,6 +654,8 @@ import Wheel from '../components/Wheel.astro';
   const cor = (i: number) => `var(--p${i % 3})`;
   const esc = (s: string) =>
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  const marksOf = (id: string) => mes.marks.get(id) ?? new Map<string, boolean>();
 
   function aviso(msg: string, ok = false) {
     const el = $('erro');
@@ -605,11 +687,16 @@ import Wheel from '../components/Wheel.astro';
     // blind while the driver is looking at another month.
     const de = dias[0] < hoje ? dias[0] : hoje;
     const ate = dias[dias.length - 1] > hoje ? dias[dias.length - 1] : hoje;
+    if (primeiraCarga) mostrar('carregando');
     try {
       pessoas = await loadPassengers();
       mes = await loadMonth(de, ate, monthKey(ano, m0));
       render();
+      mostrar('app');
+      primeiraCarga = false;
     } catch (e: any) {
+      mostrar('app');
+      primeiraCarga = false;
       erro(e?.message ?? 'Não deu para carregar o mês.');
     }
   }
@@ -626,14 +713,20 @@ import Wheel from '../components/Wheel.astro';
     $('mes-nome').textContent = monthLabel(ano, m0);
 
     const relatos = pessoas.map((p) =>
-      report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje),
+      report(p, dias, marksOf(p.id), mes.overrides, fer, hoje),
     );
+
+    // With nobody registered, a zeroed total and an empty ledger are noise on
+    // the one screen that should say "add someone".
+    const vazio = pessoas.length === 0;
+    $('hoje').hidden = vazio;
+    $('total-secao').hidden = vazio;
+    $('folha-secao').hidden = vazio;
 
     renderHoje();
     renderTotal(relatos);
     renderPessoas(relatos, chave);
     renderFolha(dias, fer);
-    renderCadastro();
   }
 
   function renderHoje() {
@@ -675,7 +768,7 @@ import Wheel from '../components/Wheel.astro';
 
     for (const p of escalados) {
       const i = pessoas.indexOf(p);
-      const faltou = mes.absences.get(p.id)?.has(hoje) ?? false;
+      const faltou = marksOf(p.id).get(hoje) === false;
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'pill';
@@ -687,7 +780,7 @@ import Wheel from '../components/Wheel.astro';
         'aria-label',
         faltou ? `${p.name} faltou hoje. Desfazer.` : `Marcar falta de ${p.name} hoje`,
       );
-      b.onclick = () => commit(() => setAbsence(p.id, hoje, !faltou));
+      b.onclick = () => commit(() => setMark(p.id, hoje, faltou ? null : false));
       el.append(b);
     }
   }
@@ -708,8 +801,18 @@ import Wheel from '../components/Wheel.astro';
   function renderPessoas(relatos: ReturnType<typeof report>[], chave: string) {
     const el = $('pessoas');
     el.innerHTML = '';
+
     if (pessoas.length === 0) {
-      el.innerHTML = '<li class="muted" style="font-size:.9rem">Ninguém cadastrado ainda. Abra “Quem anda junto” aqui embaixo.</li>';
+      // First run. A shape on screen reads as "nothing here yet" far faster
+      // than a sentence does, and the button below it is the only next step.
+      el.innerHTML = `
+        <li class="vazio">
+          <div class="vazio__linhas" aria-hidden="true">
+            <span></span><span></span><span></span>
+          </div>
+          <p class="vazio__titulo">Ninguém anda junto ainda</p>
+          <p class="vazio__texto">Cadastre a primeira pessoa com os dias em que ela vai e o valor por dia. A partir daí a carona entra sozinha.</p>
+        </li>`;
       return;
     }
 
@@ -719,25 +822,63 @@ import Wheel from '../components/Wheel.astro';
       const li = document.createElement('li');
       li.className = 'pessoa';
       li.dataset.pago = pago ? '1' : '0';
-      li.innerHTML = `
-        <span class="dot" style="--pc:${cor(i)}"></span>
-        <span class="pessoa__txt">
-          <span class="pessoa__nome">${esc(p.name)}</span>
-          <span class="pessoa__det">${r.done} × ${brl(p.fare)}${r.faltas ? ` · ${r.faltas} falta${r.faltas > 1 ? 's' : ''}` : ''}</span>
-        </span>
-        <span class="pessoa__valor">${brl(r.total)}</span>`;
 
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = 'pagar';
-      b.setAttribute('aria-pressed', String(pago));
-      b.setAttribute('aria-label', pago ? `${p.name} já pagou. Desfazer.` : `Marcar que ${p.name} pagou`);
-      b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
-      b.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total));
-      li.append(b);
+      const detalhe = [
+        weekdayList(p.weekdays),
+        `${r.done} × ${brl(p.fare)}`,
+        r.faltas ? `${r.faltas} falta${r.faltas > 1 ? 's' : ''}` : '',
+        p.end_date ? 'saiu' : '',
+      ]
+        .filter(Boolean)
+        .join(' · ');
+
+      li.innerHTML = `
+        <div class="pessoa__topo">
+          <span class="dot" style="--pc:${cor(i)}"></span>
+          <span class="pessoa__txt">
+            <span class="pessoa__nome">${esc(p.name)}</span>
+            <span class="pessoa__det">${esc(detalhe)}</span>
+          </span>
+          <span class="pessoa__valor">${brl(r.total)}</span>
+        </div>`;
+
+      const acoes = document.createElement('div');
+      acoes.className = 'pessoa__acoes';
+
+      const bPago = document.createElement('button');
+      bPago.type = 'button';
+      bPago.className = 'acao acao--pago';
+      bPago.setAttribute('aria-pressed', String(pago));
+      bPago.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>' +
+        (pago ? 'Pago' : 'Marcar pago');
+      bPago.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total));
+
+      const bLink = document.createElement('button');
+      bLink.type = 'button';
+      bLink.className = 'acao';
+      bLink.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v14"/></svg>Enviar link';
+      bLink.setAttribute('aria-label', `Enviar o link de ${p.name}`);
+      bLink.onclick = () => compartilhar(p);
+
+      const bEdit = document.createElement('button');
+      bEdit.type = 'button';
+      bEdit.className = 'acao';
+      bEdit.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Editar';
+      bEdit.setAttribute('aria-label', `Editar ${p.name}`);
+      bEdit.onclick = () => abrirEditor(p);
+
+      acoes.append(bPago, bLink, bEdit);
+      li.append(acoes);
       el.append(li);
     });
   }
+
+  /** Inside their period, so a one-off ride can be added even off-schedule. */
+  const podeEntrar = (p: PassengerRow, dia: string) =>
+    dia >= p.start_date && (!p.end_date || dia <= p.end_date);
 
   function renderFolha(dias: string[], fer: Map<string, string>) {
     const head = $('folha-head');
@@ -753,7 +894,7 @@ import Wheel from '../components/Wheel.astro';
       head.append(th);
     });
 
-    const linhas = ledgerDays(pessoas, dias);
+    const linhas = ledgerDays(pessoas, dias, mes.marks);
     for (const dia of linhas) {
       const d = parseYmd(dia);
       const tr = document.createElement('tr');
@@ -768,11 +909,16 @@ import Wheel from '../components/Wheel.astro';
       diaBtn.type = 'button';
       diaBtn.className = 'dia-btn';
       diaBtn.textContent = `${WEEKDAY_SHORT[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}`;
+      const falado = new Intl.DateTimeFormat('pt-BR', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+      }).format(d);
       diaBtn.setAttribute(
         'aria-label',
         rodou
-          ? `${dia}: marcar que não teve carona`
-          : `${dia}: sem carona. Marcar que teve.`,
+          ? `${falado}: marcar que não teve carona`
+          : `${falado}: sem carona. Marcar que teve.`,
       );
       // One tap cycles the day: normal → no ride → normal. On a holiday the
       // cycle inverts, because there the default is already "no ride".
@@ -795,64 +941,43 @@ import Wheel from '../components/Wheel.astro';
 
       pessoas.forEach((p, i) => {
         const td = document.createElement('td');
-        const faltou = mes.absences.get(p.id)?.has(dia) ?? false;
-        const escalado =
-          p.weekdays.includes(d.getDay()) &&
-          dia >= p.start_date &&
-          (!p.end_date || dia <= p.end_date);
+        const estado = dayState(p, dia, marksOf(p.id).get(dia), true);
+        // Outside their start/end range there is nothing to toggle, so the cell
+        // stays inert. Every other state cycles on tap, including a day that is
+        // not theirs: that is how a one-off ride gets added.
+        const inerte = estado === 'off' && !podeEntrar(p, dia);
 
-        if (!escalado) {
+        if (inerte) {
           td.innerHTML = '<span class="cel"><span class="mark mark--off"></span></span>';
-        } else {
-          const b = document.createElement('button');
-          b.type = 'button';
-          b.className = 'cel';
-          b.setAttribute('aria-pressed', String(faltou));
-          b.setAttribute(
-            'aria-label',
-            `${p.name}, ${dia}: ${faltou ? 'faltou. Desfazer.' : 'marcar falta'}`,
-          );
-          b.innerHTML = faltou
-            ? '<span class="mark mark--absent">✕</span>'
-            : `<span class="mark" style="--pc:${cor(i)}"></span>`;
-          b.onclick = () => commit(() => setAbsence(p.id, dia, !faltou));
-          td.append(b);
+          tr.append(td);
+          return;
         }
+
+        const rotulos: Record<string, string> = {
+          ride: 'foi. Tocar marca falta.',
+          extra: 'foi fora da escala. Tocar desfaz.',
+          absent: 'faltou. Tocar desfaz.',
+          off: 'não é dia dele. Tocar registra que foi.',
+        };
+        const marcas: Record<string, string> = {
+          ride: `<span class="mark" style="--pc:${cor(i)}"></span>`,
+          extra: `<span class="mark mark--extra" style="--pc:${cor(i)}"></span>`,
+          absent: '<span class="mark mark--absent">✕</span>',
+          off: '<span class="mark mark--off"></span>',
+        };
+
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'cel';
+        b.dataset.estado = estado;
+        b.setAttribute('aria-label', `${p.name}, ${falado}: ${rotulos[estado]}`);
+        b.innerHTML = marcas[estado];
+        b.onclick = () => commit(() => setMark(p.id, dia, nextMark(estado)));
+        td.append(b);
         tr.append(td);
       });
       body.append(tr);
     }
-  }
-
-  function renderCadastro() {
-    const el = $('cadastro');
-    el.innerHTML = '';
-    pessoas.forEach((p, i) => {
-      const li = document.createElement('li');
-      li.innerHTML = `
-        <span class="dot" style="--pc:${cor(i)}"></span>
-        <span class="cadastro__txt">
-          <span class="cadastro__nome">${esc(p.name)}</span>
-          <span class="cadastro__det">${weekdayList(p.weekdays)} · ${brl(p.fare)}/dia${p.end_date ? ' · saiu' : ''}</span>
-        </span>`;
-
-      const link = document.createElement('button');
-      link.type = 'button';
-      link.className = 'icon-btn';
-      link.setAttribute('aria-label', `Mandar o link de ${p.name}`);
-      link.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v14"/></svg>';
-      link.onclick = () => compartilhar(p);
-
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'icon-btn';
-      edit.setAttribute('aria-label', `Editar ${p.name}`);
-      edit.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
-      edit.onclick = () => abrirEditor(p);
-
-      li.append(link, edit);
-      el.append(li);
-    });
   }
 
   // ----------------------------------------------------------------- share ---
@@ -882,13 +1007,12 @@ import Wheel from '../components/Wheel.astro';
     const fer = feriados(ano);
 
     const linhas = pessoas.map((p) => {
-      const r = report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje);
+      const r = report(p, dias, marksOf(p.id), mes.overrides, fer, hoje);
       const falta = r.faltas ? ` (${r.faltas} falta${r.faltas > 1 ? 's' : ''})` : '';
       return `${p.name}: ${r.done} × ${brl(p.fare)} = ${brl(r.total)}${falta}`;
     });
     const total = pessoas.reduce(
-      (s, p) =>
-        s + report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje).total,
+      (s, p) => s + report(p, dias, marksOf(p.id), mes.overrides, fer, hoje).total,
       0,
     );
     const texto = `Caronas de ${monthLabel(ano, m0)}\n\n${linhas.join('\n')}\n\nTotal: ${brl(total)}`;
@@ -967,11 +1091,14 @@ import Wheel from '../components/Wheel.astro';
 
   // --------------------------------------------------------------- screens ---
 
-  function mostrar(tela: 'setup' | 'login' | 'app') {
+  let primeiraCarga = true;
+
+  function mostrar(tela: 'setup' | 'login' | 'app' | 'carregando') {
     $('setup').hidden = tela !== 'setup';
     $('login').hidden = tela !== 'login';
+    $('esqueleto').hidden = tela !== 'carregando';
     $('app').hidden = tela !== 'app';
-    $('sair').hidden = tela !== 'app';
+    $('sair').hidden = tela === 'setup' || tela === 'login';
   }
 
   $('mes-ant').onclick = () => {
@@ -1003,7 +1130,6 @@ import Wheel from '../components/Wheel.astro';
   } else {
     db.auth.onAuthStateChange((_e, session) => {
       if (session) {
-        mostrar('app');
         carregar();
       } else {
         mostrar('login');
