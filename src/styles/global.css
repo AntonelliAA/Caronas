@@ -95,6 +95,12 @@ ul {
   --font-mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, 'Cascadia Mono',
     'Roboto Mono', Consolas, monospace;
 
+  /* One column, one gutter. The topbar derives its padding from these so its
+     brand and controls line up with the content instead of hugging the window
+     edges on a wide screen. */
+  --col: 560px;
+  --gutter: 1rem;
+
   --radius-sm: 6px;
   --radius-md: 12px;
   --radius-full: 9999px;
@@ -151,9 +157,34 @@ ul {
 
 /* --- Structure --- */
 .wrap {
-  max-width: 560px;
+  max-width: var(--col);
   margin: 0 auto;
-  padding: 0 1rem 4rem;
+  padding: 0 var(--gutter) 4rem;
+}
+
+/* On a wide screen the column stops being a phone layout that ran out of page
+   and becomes a panel that meant to be that width. */
+@media (min-width: 720px) {
+  :root {
+    --gutter: 1.5rem;
+  }
+
+  .wrap {
+    margin-top: 1.75rem;
+    margin-bottom: 3rem;
+    padding-top: 0.5rem;
+    padding-bottom: 2rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    /* No fill on purpose: the ledger's sticky header paints itself with
+       --bg-primary to cover the rows sliding under it, and any panel tint
+       would show through as a lighter band behind that row. */
+  }
+
+  /* 60px of red is a thumb target, not a pointer target. */
+  .btn--lg {
+    min-height: 52px;
+  }
 }
 
 .topbar {
@@ -163,7 +194,7 @@ ul {
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.6rem 1rem;
+  padding: 0.6rem max(var(--gutter), calc((100% - var(--col)) / 2 + var(--gutter)));
   background: rgba(var(--bg-primary-rgb), 0.88);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
