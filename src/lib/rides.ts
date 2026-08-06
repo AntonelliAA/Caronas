@@ -21,9 +21,13 @@ export type Passenger = {
 
 export type DayState =
   | 'ride' /** on their schedule, and the ride happened */
+  | 'extra' /** not their day, but they rode anyway */
   | 'absent' /** on their schedule, but they marked an absence */
   | 'off' /** not one of their days, or outside their start/end range */
   | 'noride'; /** nobody rode: a holiday, or a day the driver marked off */
+
+/** A day counts towards the bill when they were in the car, however it happened. */
+export const isPaid = (state: DayState) => state === 'ride' || state === 'extra';
 
 export const WEEKDAY_SHORT = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
 
@@ -79,17 +83,41 @@ export function isRideDay(
   return !holidays.has(day);
 }
 
+export function isScheduled(p: Passenger, day: string): boolean {
+  if (day < p.start_date) return false;
+  if (p.end_date && day > p.end_date) return false;
+  return p.weekdays.includes(parseYmd(day).getDay());
+}
+
+/**
+ * `mark` is the row in day_marks for this person and day: false for an
+ * absence, true for a ride outside their schedule, undefined for no row at
+ * all, which is the normal case and lets the weekly schedule decide.
+ */
 export function dayState(
   p: Passenger,
   day: string,
-  absent: boolean,
+  mark: boolean | undefined,
   rideDay: boolean,
 ): DayState {
   if (day < p.start_date) return 'off';
   if (p.end_date && day > p.end_date) return 'off';
-  if (!p.weekdays.includes(parseYmd(day).getDay())) return 'off';
+  // Nobody rode that day, so there is nothing to add somebody to. To count a
+  // ride on a holiday, first mark the day itself as having had one.
   if (!rideDay) return 'noride';
-  return absent ? 'absent' : 'ride';
+  if (mark === true) return isScheduled(p, day) ? 'ride' : 'extra';
+  if (!p.weekdays.includes(parseYmd(day).getDay())) return 'off';
+  return mark === false ? 'absent' : 'ride';
+}
+
+/**
+ * What one tap on a ledger cell does. Returns the value to store, or null to
+ * delete the row and hand the day back to the schedule.
+ */
+export function nextMark(state: DayState): boolean | null {
+  if (state === 'ride') return false; // was riding, now absent
+  if (state === 'off') return true; // not their day, add them anyway
+  return null; // 'absent' or 'extra': undo, back to the schedule
 }
 
 /** Round to cents. 12 × 15.15 must not become 181.79999999999998. */
@@ -111,18 +139,18 @@ export type Report = {
 export function report(
   p: Passenger,
   days: string[],
-  absences: Set<string>,
+  marks: Map<string, boolean>,
   overrides: Map<string, boolean>,
   holidays: Map<string, string>,
   today: string,
 ): Report {
   const rows = days.map((day) => ({
     day,
-    state: dayState(p, day, absences.has(day), isRideDay(day, overrides, holidays)),
+    state: dayState(p, day, marks.get(day), isRideDay(day, overrides, holidays)),
   }));
 
-  const done = rows.filter((r) => r.state === 'ride' && r.day <= today).length;
-  const planned = rows.filter((r) => r.state === 'ride').length;
+  const done = rows.filter((r) => isPaid(r.state) && r.day <= today).length;
+  const planned = rows.filter((r) => isPaid(r.state)).length;
   const faltas = rows.filter((r) => r.state === 'absent' && r.day <= today).length;
 
   return {
@@ -137,15 +165,19 @@ export function report(
 
 /**
  * Days worth a row in the ledger: the ones where at least one person was
- * scheduled. A Saturday nobody rides disappears, and the month fits on screen.
+ * scheduled, plus any day somebody actually rode. A Saturday nobody rides
+ * disappears, and the month fits on screen, but a Saturday with one extra ride
+ * on it still shows up.
  */
-export function ledgerDays(passengers: Passenger[], days: string[]): string[] {
+export function ledgerDays(
+  passengers: Passenger[],
+  days: string[],
+  marks?: Map<string, Map<string, boolean>>,
+): string[] {
   return days.filter((day) =>
-    passengers.some((p) => {
-      if (day < p.start_date) return false;
-      if (p.end_date && day > p.end_date) return false;
-      return p.weekdays.includes(parseYmd(day).getDay());
-    }),
+    passengers.some(
+      (p) => isScheduled(p, day) || marks?.get(p.id)?.get(day) === true,
+    ),
   );
 }
 

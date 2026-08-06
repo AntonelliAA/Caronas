@@ -11,6 +11,7 @@ import {
   ledgerDays,
   monthDays,
   money,
+  nextMark,
   parseYmd,
   report,
   weekdayList,
@@ -29,6 +30,7 @@ const marcos = {
 
 const noHolidays = new Map();
 const noOverrides = new Map();
+const noMarks = new Map();
 
 test('date strings do not slip a timezone', () => {
   // The classic bug: new Date('2026-08-06') is UTC and comes back as the 5th in Brazil.
@@ -69,28 +71,49 @@ test('isRideDay: a holiday does not count, but the driver has the last word', ()
   assert.equal(isRideDay('2026-08-06', new Map([['2026-08-06', false]]), f), false);
 });
 
-test('dayState respects schedule, date range, and absence', () => {
-  assert.equal(dayState(marcos, '2026-08-03', false, true), 'ride'); // Monday
-  assert.equal(dayState(marcos, '2026-08-03', true, true), 'absent');
-  assert.equal(dayState(marcos, '2026-08-06', false, true), 'off'); // Thursday
-  assert.equal(dayState(marcos, '2026-08-03', false, false), 'noride');
+test('dayState respects schedule, date range, and marks', () => {
+  assert.equal(dayState(marcos, '2026-08-03', undefined, true), 'ride'); // Monday
+  assert.equal(dayState(marcos, '2026-08-03', false, true), 'absent');
+  assert.equal(dayState(marcos, '2026-08-06', undefined, true), 'off'); // Thursday
+  assert.equal(dayState(marcos, '2026-08-03', undefined, false), 'noride');
 
   // Joined mid-month: earlier days are not theirs.
   const joined = { ...marcos, start_date: '2026-08-10' };
-  assert.equal(dayState(joined, '2026-08-03', false, true), 'off');
-  assert.equal(dayState(joined, '2026-08-10', false, true), 'ride');
+  assert.equal(dayState(joined, '2026-08-03', undefined, true), 'off');
+  assert.equal(dayState(joined, '2026-08-10', undefined, true), 'ride');
 
   // Left: later days stop counting.
   const left = { ...marcos, end_date: '2026-08-12' };
-  assert.equal(dayState(left, '2026-08-12', false, true), 'ride');
-  assert.equal(dayState(left, '2026-08-17', false, true), 'off');
+  assert.equal(dayState(left, '2026-08-12', undefined, true), 'ride');
+  assert.equal(dayState(left, '2026-08-17', undefined, true), 'off');
+});
+
+test('a ride can be added on a day that is not theirs', () => {
+  // Thursday is not one of Marcos's days, but he rode anyway.
+  assert.equal(dayState(marcos, '2026-08-06', true, true), 'extra');
+  // On one of his days the same mark is just a normal ride, not an extra.
+  assert.equal(dayState(marcos, '2026-08-03', true, true), 'ride');
+
+  // Outside the date range a mark still does not resurrect the day.
+  const joined = { ...marcos, start_date: '2026-08-10' };
+  assert.equal(dayState(joined, '2026-08-06', true, true), 'off');
+
+  // Nobody rode at all, so there is nobody to add.
+  assert.equal(dayState(marcos, '2026-08-06', true, false), 'noride');
+});
+
+test('nextMark cycles a cell in one tap', () => {
+  assert.equal(nextMark('ride'), false); // riding -> absent
+  assert.equal(nextMark('absent'), null); // absent -> back to the schedule
+  assert.equal(nextMark('off'), true); // not their day -> extra ride
+  assert.equal(nextMark('extra'), null); // extra -> back to the schedule
 });
 
 test('report adds up the month: done, planned, absences, money', () => {
   const days = monthDays(2026, 7); // August 2026
   const today = '2026-08-31'; // month closed
 
-  const full = report(marcos, days, new Set(), noOverrides, noHolidays, today);
+  const full = report(marcos, days, noMarks, noOverrides, noHolidays, today);
   // August 2026 has 5 Mondays, 4 Tuesdays and 4 Wednesdays = 13 days.
   assert.equal(full.done, 13);
   assert.equal(full.planned, 13);
@@ -100,7 +123,7 @@ test('report adds up the month: done, planned, absences, money', () => {
   const withAbsences = report(
     marcos,
     days,
-    new Set(['2026-08-04', '2026-08-05']),
+    new Map([['2026-08-04', false], ['2026-08-05', false]]),
     noOverrides,
     noHolidays,
     today,
@@ -113,18 +136,30 @@ test('report adds up the month: done, planned, absences, money', () => {
   const noRide = report(
     marcos,
     days,
-    new Set(),
+    noMarks,
     new Map([['2026-08-10', false]]),
     noHolidays,
     today,
   );
   assert.equal(noRide.done, 12);
   assert.equal(noRide.faltas, 0);
+
+  // Two Thursdays he does not normally ride, added by hand, are billed.
+  const withExtras = report(
+    marcos,
+    days,
+    new Map([['2026-08-06', true], ['2026-08-20', true]]),
+    noOverrides,
+    noHolidays,
+    today,
+  );
+  assert.equal(withExtras.done, 15);
+  assert.equal(withExtras.total, 225);
 });
 
 test('report separates what already happened from what is still to come', () => {
   const days = monthDays(2026, 7);
-  const r = report(marcos, days, new Set(), noOverrides, noHolidays, '2026-08-05');
+  const r = report(marcos, days, noMarks, noOverrides, noHolidays, '2026-08-05');
   assert.equal(r.done, 3); // the 3rd, 4th, 5th
   assert.equal(r.planned, 13);
   assert.equal(r.total, 45);
@@ -134,7 +169,7 @@ test('report separates what already happened from what is still to come', () => 
 test('cents do not turn into a repeating decimal', () => {
   assert.equal(money(3 * 0.1), 0.3);
   assert.equal(
-    report({ ...marcos, fare: 15.15 }, monthDays(2026, 7), new Set(), noOverrides, noHolidays, '2026-08-31').total,
+    report({ ...marcos, fare: 15.15 }, monthDays(2026, 7), noMarks, noOverrides, noHolidays, '2026-08-31').total,
     196.95,
   );
 });
@@ -145,6 +180,14 @@ test('ledgerDays hides a day nobody is scheduled for', () => {
   assert.equal(rows.length, 13);
   assert.ok(!rows.includes('2026-08-08')); // Saturday
   assert.ok(rows.includes('2026-08-03'));
+});
+
+test('ledgerDays keeps a day somebody actually rode on', () => {
+  const days = monthDays(2026, 7);
+  const marks = new Map([['1', new Map([['2026-08-08', true]])]]); // a Saturday
+  const rows = ledgerDays([marcos], days, marks);
+  assert.equal(rows.length, 14);
+  assert.ok(rows.includes('2026-08-08'));
 });
 
 test('weekdayList reads like speech', () => {

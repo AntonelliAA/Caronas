@@ -33,33 +33,39 @@ export async function loadPassengerByToken(token: string): Promise<PassengerRow 
 
 /** Everything the month needs, in a single round trip. */
 export async function loadMonth(from: string, to: string, month: string) {
-  const [absences, overrides, payments] = await Promise.all([
-    db.from('absences').select('passenger_id, day, note').gte('day', from).lte('day', to),
+  const [marks, overrides, payments] = await Promise.all([
+    db.from('day_marks').select('passenger_id, day, rode').gte('day', from).lte('day', to),
     db.from('day_overrides').select('day, has_ride, note').gte('day', from).lte('day', to),
     db.from('payments').select('passenger_id, amount, paid_at').eq('month', month),
   ]);
-  const err = absences.error ?? overrides.error ?? payments.error;
+  const err = marks.error ?? overrides.error ?? payments.error;
   if (err) throw err;
 
-  const byPassenger = new Map<string, Set<string>>();
-  for (const a of absences.data ?? []) {
-    let set = byPassenger.get(a.passenger_id);
-    if (!set) byPassenger.set(a.passenger_id, (set = new Set()));
-    set.add(a.day);
+  const byPassenger = new Map<string, Map<string, boolean>>();
+  for (const m of marks.data ?? []) {
+    let days = byPassenger.get(m.passenger_id);
+    if (!days) byPassenger.set(m.passenger_id, (days = new Map()));
+    days.set(m.day, m.rode);
   }
 
   return {
-    absences: byPassenger,
+    marks: byPassenger,
     overrides: new Map((overrides.data ?? []).map((o) => [o.day, o.has_ride] as const)),
     overrideNotes: new Map((overrides.data ?? []).map((o) => [o.day, o.note ?? ''] as const)),
     paid: new Set((payments.data ?? []).map((p) => p.passenger_id)),
   };
 }
 
-export async function setAbsence(passengerId: string, day: string, absent: boolean) {
-  const q = absent
-    ? db.from('absences').insert({ passenger_id: passengerId, day })
-    : db.from('absences').delete().eq('passenger_id', passengerId).eq('day', day);
+/**
+ * `rode` is what the ledger cell should become: false for an absence, true for
+ * a ride outside their schedule, null to drop the row and let the weekly
+ * schedule decide again.
+ */
+export async function setMark(passengerId: string, day: string, rode: boolean | null) {
+  const q =
+    rode === null
+      ? db.from('day_marks').delete().eq('passenger_id', passengerId).eq('day', day)
+      : db.from('day_marks').upsert({ passenger_id: passengerId, day, rode });
   const { error } = await q;
   if (error) throw error;
 }
