@@ -1,0 +1,1013 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Wheel from '../components/Wheel.astro';
+---
+
+<Layout title="Caronas">
+  <header class="topbar">
+    <span class="topbar__brand"><Wheel /> Caronas</span>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Alternar tema claro e escuro">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none"></path>
+      </svg>
+    </button>
+    <button id="sair" class="icon-btn" type="button" aria-label="Sair" hidden>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path>
+      </svg>
+    </button>
+  </header>
+
+  <p id="erro" class="erro" role="alert" hidden></p>
+
+  <main class="wrap">
+    <!-- Without Supabase keys there is nothing to show. Say what to do instead. -->
+    <section id="setup" class="card setup" hidden>
+      <h1>Falta conectar o banco</h1>
+      <p>Crie um projeto no Supabase, rode o <code>schema.sql</code> e preencha o <code>.env</code> com <code>PUBLIC_SUPABASE_URL</code> e <code>PUBLIC_SUPABASE_ANON_KEY</code>. O passo a passo está no README.</p>
+    </section>
+
+    <section id="login" hidden>
+      <h1 class="titulo">Entrar</h1>
+      <p class="muted sub">A tela do motorista. Quem pega carona usa o link pessoal.</p>
+      <form id="login-form">
+        <label class="field"><span>Email</span>
+          <input type="email" id="email" autocomplete="username" required />
+        </label>
+        <label class="field"><span>Senha</span>
+          <input type="password" id="senha" autocomplete="current-password" required />
+        </label>
+        <button class="btn btn--primary btn--block" type="submit">Entrar</button>
+      </form>
+    </section>
+
+    <div id="app" hidden>
+      <nav class="mesnav">
+        <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+        <h1 id="mes-nome" class="mesnav__nome">—</h1>
+        <button id="mes-prox" class="icon-btn" type="button" aria-label="Próximo mês">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"></path></svg>
+        </button>
+      </nav>
+
+      <section id="hoje" class="hoje"></section>
+
+      <section class="total">
+        <span class="label">a receber no mês</span>
+        <p id="total-valor" class="total__valor num">—</p>
+        <p id="total-linha" class="muted total__linha"></p>
+        <div class="total__acoes">
+          <button id="copiar" class="btn btn--ghost" type="button">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Resumo do mês
+          </button>
+        </div>
+      </section>
+
+      <section>
+        <span class="label">por pessoa</span>
+        <ul id="pessoas" class="pessoas"></ul>
+      </section>
+
+      <section>
+        <span class="label">folha do mês</span>
+        <table class="folha">
+          <thead><tr id="folha-head"></tr></thead>
+          <tbody id="folha-body"></tbody>
+        </table>
+        <p class="legenda">
+          <span class="mark mark--ride" style="--pc: var(--text-secondary)"></span> foi
+          <span class="mark mark--absent">✕</span> faltou
+          <span class="mark mark--off"></span> não é dia dele
+        </p>
+        <p class="legenda muted">Toque no dia para marcar que não teve carona. Toque na marca para lançar uma falta.</p>
+      </section>
+
+      <details class="sheet">
+        <summary>Quem anda junto</summary>
+        <ul id="cadastro" class="cadastro"></ul>
+        <button id="novo" class="btn btn--ghost btn--block" type="button">Adicionar pessoa</button>
+      </details>
+    </div>
+  </main>
+
+  <dialog id="editor">
+    <form method="dialog" id="editor-form">
+      <h2 id="editor-titulo">Pessoa</h2>
+      <label class="field"><span>Nome</span><input type="text" id="f-nome" required maxlength="40" /></label>
+      <div class="field">
+        <span>Dias em que vai</span>
+        <div class="weekpick" id="f-dias"></div>
+      </div>
+      <label class="field"><span>Valor por dia (R$)</span><input type="number" id="f-valor" min="0" step="0.01" required /></label>
+      <label class="field"><span>Começou em</span><input type="date" id="f-inicio" required /></label>
+      <label class="field"><span>Parou em (deixe vazio se ainda anda)</span><input type="date" id="f-fim" /></label>
+      <div class="editor__acoes">
+        <button class="btn btn--ghost" value="cancel" type="submit" formnovalidate>Cancelar</button>
+        <button class="btn btn--primary" value="ok" type="submit">Salvar</button>
+      </div>
+      <button class="apagar" id="f-apagar" type="button" hidden>Remover do grupo</button>
+    </form>
+  </dialog>
+</Layout>
+
+<style is:global>
+  .erro {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    background: var(--accent-strong);
+    color: #fff;
+    font-size: 0.85rem;
+  }
+
+  .erro[data-ok='1'] {
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .titulo {
+    font-size: 1.5rem;
+    letter-spacing: -0.02em;
+    margin: 1.5rem 0 0.25rem;
+  }
+
+  .sub {
+    font-size: 0.9rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .setup {
+    margin-top: 2rem;
+  }
+
+  .setup h1 {
+    font-size: 1.15rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .setup p {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .setup code {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+
+  /* --- Month --- */
+  .mesnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 1rem 0 0.5rem;
+  }
+
+  .mesnav__nome {
+    font-size: 1.05rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    text-transform: lowercase;
+  }
+
+  /* --- Today --- */
+  .hoje {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    align-items: center;
+    min-height: var(--tap);
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hoje__dia {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--accent);
+  }
+
+  .hoje__vazio {
+    font-size: 0.9rem;
+    color: var(--text-secondary);
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    min-height: var(--tap);
+    padding: 0.35rem 0.85rem 0.35rem 0.35rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-full);
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+
+  .pill[data-falta='1'] {
+    border-color: var(--accent);
+    color: var(--text-secondary);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent);
+  }
+
+  /* --- Total --- */
+  .total__valor {
+    font-size: 2.75rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    color: var(--accent);
+  }
+
+  .total__linha {
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+  }
+
+  .total__acoes {
+    margin: 1rem 0 1.75rem;
+  }
+
+  /* --- People / payment --- */
+  .pessoas {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 1.75rem;
+  }
+
+  .pessoa {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  .pessoa__txt {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .pessoa__nome {
+    display: block;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+
+  .pessoa__det {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pessoa__valor {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.02em;
+  }
+
+  .pagar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--tap);
+    height: var(--tap);
+    flex: none;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+    color: var(--text-faint);
+  }
+
+  .pagar[aria-pressed='true'] {
+    border-color: var(--success);
+    color: var(--success);
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+  }
+
+  .pessoa[data-pago='1'] .pessoa__valor {
+    color: var(--text-faint);
+    text-decoration: line-through;
+  }
+
+  /* --- The month's ledger: the main object on the screen --- */
+  .folha {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+
+  .folha th,
+  .folha td {
+    padding: 0;
+    text-align: center;
+  }
+
+  .folha__nome {
+    display: block;
+    margin-top: 0.3rem;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .folha thead th {
+    position: sticky;
+    top: 56px;
+    vertical-align: bottom;
+    z-index: 10;
+    padding: 0.5rem 0;
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-hover);
+  }
+
+  .folha thead th:first-child {
+    width: 4.2rem;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    font-weight: 400;
+    color: var(--text-faint);
+  }
+
+  .folha tbody th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 400;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .folha tbody tr {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .folha tbody tr.hoje-linha th,
+  .folha tbody tr.hoje-linha td {
+    background: var(--accent-soft);
+  }
+
+  .folha tbody tr.hoje-linha th {
+    color: var(--accent);
+    font-weight: 700;
+    box-shadow: inset 2px 0 0 var(--accent);
+  }
+
+  .dia-btn {
+    display: block;
+    width: 100%;
+    min-height: var(--tap);
+    padding: 0 0.15rem;
+    text-align: left;
+    font: inherit;
+    color: inherit;
+  }
+
+  .cel {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    min-height: var(--tap);
+  }
+
+  .mark {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--pc);
+  }
+
+  .mark--absent {
+    width: auto;
+    height: auto;
+    background: none;
+    border-radius: 0;
+    color: var(--accent);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mark--off {
+    width: 8px;
+    height: 1px;
+    border-radius: 0;
+    background: var(--border-hover);
+  }
+
+  .sem-carona {
+    padding: 0.55rem 0;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    text-align: left;
+  }
+
+  .sem-carona::before {
+    content: '';
+    display: inline-block;
+    width: 1.5rem;
+    height: 1px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+    background: var(--border-hover);
+  }
+
+  .legenda {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-top: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .legenda .mark + span,
+  .legenda .mark {
+    margin-left: 0.15rem;
+  }
+
+  /* --- Roster --- */
+  .sheet {
+    margin-top: 2rem;
+    border-top: 1px solid var(--border);
+    padding-top: 1rem;
+  }
+
+  .sheet summary {
+    min-height: var(--tap);
+    display: flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .cadastro {
+    display: grid;
+    gap: 0.5rem;
+    margin: 0.5rem 0 0.75rem;
+  }
+
+  .cadastro li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0;
+  }
+
+  .cadastro__txt {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .cadastro__nome {
+    display: block;
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .cadastro__det {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  /* --- Editor dialog --- */
+  dialog {
+    width: min(460px, calc(100vw - 2rem));
+    padding: 1.25rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
+    color: var(--text-primary);
+  }
+
+  dialog::backdrop {
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  dialog h2 {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+  }
+
+  .editor__acoes {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+  }
+
+  .editor__acoes .btn {
+    flex: 1;
+  }
+
+  .apagar {
+    display: block;
+    width: 100%;
+    margin-top: 1rem;
+    padding: 0.5rem;
+    font-size: 0.8rem;
+    color: var(--accent);
+  }
+</style>
+
+<script>
+  import {
+    brl,
+    ledgerDays,
+    monthDays,
+    monthKey,
+    monthLabel,
+    parseYmd,
+    report,
+    weekdayList,
+    WEEKDAY_SHORT,
+    ymd,
+  } from '../lib/rides';
+  import { feriados } from '../lib/feriados';
+  import {
+    configured,
+    db,
+    loadMonth,
+    loadPassengers,
+    removePassenger,
+    savePassenger,
+    setAbsence,
+    setOverride,
+    setPaid,
+    type PassengerRow,
+  } from '../lib/db';
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const hoje = ymd(new Date());
+  let cursor = new Date();
+  let pessoas: PassengerRow[] = [];
+  let mes: Awaited<ReturnType<typeof loadMonth>>;
+
+  // ponytail: three validated hues; a fourth passenger reuses the first.
+  // Every colored mark has a name beside it or above its column, so reuse
+  // never leaves anyone guessing. If the group grows past three, validate a
+  // fourth hue before adding --p3.
+  const cor = (i: number) => `var(--p${i % 3})`;
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  function aviso(msg: string, ok = false) {
+    const el = $('erro');
+    el.textContent = msg;
+    el.dataset.ok = ok ? '1' : '0';
+    el.hidden = false;
+    setTimeout(() => (el.hidden = true), ok ? 2500 : 6000);
+  }
+
+  const erro = (msg: string) => aviso(msg);
+
+  /** Every write goes through here, so a failure is never silent. */
+  async function commit(fn: () => Promise<void>) {
+    try {
+      await fn();
+      await carregar();
+    } catch (e: any) {
+      erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+    }
+  }
+
+  // ------------------------------------------------------------------ data ---
+
+  async function carregar() {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const dias = monthDays(ano, m0);
+    // The fetched window always includes today, otherwise the "today" card goes
+    // blind while the driver is looking at another month.
+    const de = dias[0] < hoje ? dias[0] : hoje;
+    const ate = dias[dias.length - 1] > hoje ? dias[dias.length - 1] : hoje;
+    try {
+      pessoas = await loadPassengers();
+      mes = await loadMonth(de, ate, monthKey(ano, m0));
+      render();
+    } catch (e: any) {
+      erro(e?.message ?? 'Não deu para carregar o mês.');
+    }
+  }
+
+  // ---------------------------------------------------------------- render ---
+
+  function render() {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const dias = monthDays(ano, m0);
+    const fer = feriados(ano);
+    const chave = monthKey(ano, m0);
+
+    $('mes-nome').textContent = monthLabel(ano, m0);
+
+    const relatos = pessoas.map((p) =>
+      report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje),
+    );
+
+    renderHoje();
+    renderTotal(relatos);
+    renderPessoas(relatos, chave);
+    renderFolha(dias, fer);
+    renderCadastro();
+  }
+
+  function renderHoje() {
+    const el = $('hoje');
+    const d = parseYmd(hoje);
+    // Holidays for today's year, not for the month on screen.
+    const fer = feriados(d.getFullYear());
+    const rotulo = `${WEEKDAY_SHORT[d.getDay()]}, ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+    el.innerHTML = '';
+
+    const cab = document.createElement('span');
+    cab.className = 'hoje__dia';
+    cab.textContent = `hoje · ${rotulo}`;
+    el.append(cab);
+
+    const forcado = mes.overrides.get(hoje);
+    const rodou = forcado !== undefined ? forcado : !fer.has(hoje);
+    const escalados = pessoas.filter(
+      (p) =>
+        p.weekdays.includes(d.getDay()) &&
+        hoje >= p.start_date &&
+        (!p.end_date || hoje <= p.end_date),
+    );
+
+    if (!rodou) {
+      const t = document.createElement('p');
+      t.className = 'hoje__vazio';
+      t.textContent = fer.get(hoje) ? `${fer.get(hoje)} — sem carona hoje.` : 'Sem carona hoje.';
+      el.append(t);
+      return;
+    }
+    if (escalados.length === 0) {
+      const t = document.createElement('p');
+      t.className = 'hoje__vazio';
+      t.textContent = 'Ninguém escalado para hoje.';
+      el.append(t);
+      return;
+    }
+
+    for (const p of escalados) {
+      const i = pessoas.indexOf(p);
+      const faltou = mes.absences.get(p.id)?.has(hoje) ?? false;
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pill';
+      b.dataset.falta = faltou ? '1' : '0';
+      b.setAttribute('aria-pressed', String(faltou));
+      b.innerHTML = `<span class="dot" style="--pc:${cor(i)}"></span>`;
+      b.append(p.name);
+      b.setAttribute(
+        'aria-label',
+        faltou ? `${p.name} faltou hoje. Desfazer.` : `Marcar falta de ${p.name} hoje`,
+      );
+      b.onclick = () => commit(() => setAbsence(p.id, hoje, !faltou));
+      el.append(b);
+    }
+  }
+
+  function renderTotal(relatos: ReturnType<typeof report>[]) {
+    const feito = relatos.reduce((s, r) => s + r.total, 0);
+    const previsto = relatos.reduce((s, r) => s + r.plannedTotal, 0);
+    const caronas = relatos.reduce((s, r) => s + r.done, 0);
+    const faltas = relatos.reduce((s, r) => s + r.faltas, 0);
+
+    $('total-valor').textContent = brl(feito);
+    const partes = [`${caronas} ${caronas === 1 ? 'carona' : 'caronas'}`];
+    if (faltas) partes.push(`${faltas} ${faltas === 1 ? 'falta' : 'faltas'}`);
+    if (previsto > feito) partes.push(`${brl(previsto)} se o mês fechar como está`);
+    $('total-linha').textContent = partes.join(' · ');
+  }
+
+  function renderPessoas(relatos: ReturnType<typeof report>[], chave: string) {
+    const el = $('pessoas');
+    el.innerHTML = '';
+    if (pessoas.length === 0) {
+      el.innerHTML = '<li class="muted" style="font-size:.9rem">Ninguém cadastrado ainda. Abra “Quem anda junto” aqui embaixo.</li>';
+      return;
+    }
+
+    pessoas.forEach((p, i) => {
+      const r = relatos[i];
+      const pago = mes.paid.has(p.id);
+      const li = document.createElement('li');
+      li.className = 'pessoa';
+      li.dataset.pago = pago ? '1' : '0';
+      li.innerHTML = `
+        <span class="dot" style="--pc:${cor(i)}"></span>
+        <span class="pessoa__txt">
+          <span class="pessoa__nome">${esc(p.name)}</span>
+          <span class="pessoa__det">${r.done} × ${brl(p.fare)}${r.faltas ? ` · ${r.faltas} falta${r.faltas > 1 ? 's' : ''}` : ''}</span>
+        </span>
+        <span class="pessoa__valor">${brl(r.total)}</span>`;
+
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'pagar';
+      b.setAttribute('aria-pressed', String(pago));
+      b.setAttribute('aria-label', pago ? `${p.name} já pagou. Desfazer.` : `Marcar que ${p.name} pagou`);
+      b.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>';
+      b.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total));
+      li.append(b);
+      el.append(li);
+    });
+  }
+
+  function renderFolha(dias: string[], fer: Map<string, string>) {
+    const head = $('folha-head');
+    const body = $('folha-body');
+    head.innerHTML = '<th scope="col">dia</th>';
+    body.innerHTML = '';
+
+    pessoas.forEach((p, i) => {
+      const th = document.createElement('th');
+      th.scope = 'col';
+      // Full first name in the column header: it fits, and nobody has to decode initials.
+      th.innerHTML = `<span class="dot" style="--pc:${cor(i)}"></span><span class="folha__nome">${esc(p.name.split(' ')[0])}</span>`;
+      head.append(th);
+    });
+
+    const linhas = ledgerDays(pessoas, dias);
+    for (const dia of linhas) {
+      const d = parseYmd(dia);
+      const tr = document.createElement('tr');
+      if (dia === hoje) tr.className = 'hoje-linha';
+
+      const forcado = mes.overrides.get(dia);
+      const rodou = forcado !== undefined ? forcado : !fer.has(dia);
+
+      const th = document.createElement('th');
+      th.scope = 'row';
+      const diaBtn = document.createElement('button');
+      diaBtn.type = 'button';
+      diaBtn.className = 'dia-btn';
+      diaBtn.textContent = `${WEEKDAY_SHORT[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}`;
+      diaBtn.setAttribute(
+        'aria-label',
+        rodou
+          ? `${dia}: marcar que não teve carona`
+          : `${dia}: sem carona. Marcar que teve.`,
+      );
+      // One tap cycles the day: normal → no ride → normal. On a holiday the
+      // cycle inverts, because there the default is already "no ride".
+      diaBtn.onclick = () =>
+        commit(() =>
+          setOverride(dia, forcado === undefined ? !rodou : null, fer.get(dia)),
+        );
+      th.append(diaBtn);
+      tr.append(th);
+
+      if (!rodou) {
+        const td = document.createElement('td');
+        td.colSpan = Math.max(pessoas.length, 1);
+        td.className = 'sem-carona';
+        td.textContent = fer.get(dia) ?? mes.overrideNotes.get(dia) ?? 'sem carona';
+        tr.append(td);
+        body.append(tr);
+        continue;
+      }
+
+      pessoas.forEach((p, i) => {
+        const td = document.createElement('td');
+        const faltou = mes.absences.get(p.id)?.has(dia) ?? false;
+        const escalado =
+          p.weekdays.includes(d.getDay()) &&
+          dia >= p.start_date &&
+          (!p.end_date || dia <= p.end_date);
+
+        if (!escalado) {
+          td.innerHTML = '<span class="cel"><span class="mark mark--off"></span></span>';
+        } else {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.className = 'cel';
+          b.setAttribute('aria-pressed', String(faltou));
+          b.setAttribute(
+            'aria-label',
+            `${p.name}, ${dia}: ${faltou ? 'faltou. Desfazer.' : 'marcar falta'}`,
+          );
+          b.innerHTML = faltou
+            ? '<span class="mark mark--absent">✕</span>'
+            : `<span class="mark" style="--pc:${cor(i)}"></span>`;
+          b.onclick = () => commit(() => setAbsence(p.id, dia, !faltou));
+          td.append(b);
+        }
+        tr.append(td);
+      });
+      body.append(tr);
+    }
+  }
+
+  function renderCadastro() {
+    const el = $('cadastro');
+    el.innerHTML = '';
+    pessoas.forEach((p, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `
+        <span class="dot" style="--pc:${cor(i)}"></span>
+        <span class="cadastro__txt">
+          <span class="cadastro__nome">${esc(p.name)}</span>
+          <span class="cadastro__det">${weekdayList(p.weekdays)} · ${brl(p.fare)}/dia${p.end_date ? ' · saiu' : ''}</span>
+        </span>`;
+
+      const link = document.createElement('button');
+      link.type = 'button';
+      link.className = 'icon-btn';
+      link.setAttribute('aria-label', `Mandar o link de ${p.name}`);
+      link.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 6l-4-4-4 4M12 2v14"/></svg>';
+      link.onclick = () => compartilhar(p);
+
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'icon-btn';
+      edit.setAttribute('aria-label', `Editar ${p.name}`);
+      edit.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>';
+      edit.onclick = () => abrirEditor(p);
+
+      li.append(link, edit);
+      el.append(li);
+    });
+  }
+
+  // ----------------------------------------------------------------- share ---
+
+  function linkDe(p: PassengerRow) {
+    return `${location.origin}${import.meta.env.BASE_URL}p/?t=${p.token}`;
+  }
+
+  async function compartilhar(p: PassengerRow) {
+    const url = linkDe(p);
+    const text = `${p.name}, esse é o seu link das caronas. Salve na tela de início: quando não for num dia, marque aqui que eu já desconto.`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'Caronas', text, url });
+      else {
+        await navigator.clipboard.writeText(`${text}\n${url}`);
+        aviso('Link copiado.', true);
+      }
+    } catch {
+      /* share sheet dismissed */
+    }
+  }
+
+  async function copiarResumo() {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const dias = monthDays(ano, m0);
+    const fer = feriados(ano);
+
+    const linhas = pessoas.map((p) => {
+      const r = report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje);
+      const falta = r.faltas ? ` (${r.faltas} falta${r.faltas > 1 ? 's' : ''})` : '';
+      return `${p.name}: ${r.done} × ${brl(p.fare)} = ${brl(r.total)}${falta}`;
+    });
+    const total = pessoas.reduce(
+      (s, p) =>
+        s + report(p, dias, mes.absences.get(p.id) ?? new Set(), mes.overrides, fer, hoje).total,
+      0,
+    );
+    const texto = `Caronas de ${monthLabel(ano, m0)}\n\n${linhas.join('\n')}\n\nTotal: ${brl(total)}`;
+
+    try {
+      if (navigator.share) await navigator.share({ text: texto });
+      else {
+        await navigator.clipboard.writeText(texto);
+        aviso('Resumo copiado.', true);
+      }
+    } catch {
+      /* share sheet dismissed */
+    }
+  }
+
+  // ---------------------------------------------------------------- editor ---
+
+  let editando: PassengerRow | null = null;
+  let diasSel = new Set<number>();
+
+  function montarWeekpick() {
+    const box = $('f-dias');
+    box.innerHTML = '';
+    WEEKDAY_SHORT.forEach((nome, d) => {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = nome;
+      b.setAttribute('aria-pressed', String(diasSel.has(d)));
+      b.onclick = () => {
+        diasSel.has(d) ? diasSel.delete(d) : diasSel.add(d);
+        b.setAttribute('aria-pressed', String(diasSel.has(d)));
+      };
+      box.append(b);
+    });
+  }
+
+  function abrirEditor(p: PassengerRow | null) {
+    editando = p;
+    diasSel = new Set(p?.weekdays ?? [1, 2, 3, 4, 5]);
+    $('editor-titulo').textContent = p ? p.name : 'Nova pessoa';
+    ($('f-nome') as HTMLInputElement).value = p?.name ?? '';
+    ($('f-valor') as HTMLInputElement).value = String(p?.fare ?? '');
+    ($('f-inicio') as HTMLInputElement).value = p?.start_date ?? hoje;
+    ($('f-fim') as HTMLInputElement).value = p?.end_date ?? '';
+    $('f-apagar').hidden = !p;
+    montarWeekpick();
+    ($('editor') as HTMLDialogElement).showModal();
+  }
+
+  $('editor-form').addEventListener('submit', (ev) => {
+    const acao = (ev as SubmitEvent).submitter as HTMLButtonElement | null;
+    if (acao?.value !== 'ok') return;
+    if (diasSel.size === 0) {
+      ev.preventDefault();
+      erro('Escolha pelo menos um dia da semana.');
+      return;
+    }
+    const dados = {
+      id: editando?.id,
+      name: ($('f-nome') as HTMLInputElement).value.trim(),
+      weekdays: [...diasSel].sort(),
+      fare: Number(($('f-valor') as HTMLInputElement).value),
+      start_date: ($('f-inicio') as HTMLInputElement).value,
+      end_date: ($('f-fim') as HTMLInputElement).value || null,
+    };
+    commit(() => savePassenger(dados as any));
+  });
+
+  $('f-apagar').addEventListener('click', () => {
+    if (!editando) return;
+    if (!confirm(`Remover ${editando.name}? As faltas e os pagamentos dessa pessoa vão junto.`)) return;
+    const id = editando.id;
+    ($('editor') as HTMLDialogElement).close();
+    commit(() => removePassenger(id));
+  });
+
+  // --------------------------------------------------------------- screens ---
+
+  function mostrar(tela: 'setup' | 'login' | 'app') {
+    $('setup').hidden = tela !== 'setup';
+    $('login').hidden = tela !== 'login';
+    $('app').hidden = tela !== 'app';
+    $('sair').hidden = tela !== 'app';
+  }
+
+  $('mes-ant').onclick = () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+    carregar();
+  };
+  $('mes-prox').onclick = () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    carregar();
+  };
+  $('copiar').onclick = copiarResumo;
+  $('novo').onclick = () => abrirEditor(null);
+  $('sair').onclick = async () => {
+    await db.auth.signOut();
+    mostrar('login');
+  };
+
+  $('login-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const { error } = await db.auth.signInWithPassword({
+      email: ($('email') as HTMLInputElement).value,
+      password: ($('senha') as HTMLInputElement).value,
+    });
+    if (error) erro('Email ou senha não conferem.');
+  });
+
+  if (!configured) {
+    mostrar('setup');
+  } else {
+    db.auth.onAuthStateChange((_e, session) => {
+      if (session) {
+        mostrar('app');
+        carregar();
+      } else {
+        mostrar('login');
+      }
+    });
+  }
+</script>
