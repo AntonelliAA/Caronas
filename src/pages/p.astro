@@ -1,0 +1,446 @@
+---
+import Layout from '../layouts/Layout.astro';
+import Wheel from '../components/Wheel.astro';
+---
+
+<Layout title="Minhas caronas">
+  <header class="topbar">
+    <span class="topbar__brand"><Wheel /> Caronas</span>
+    <button id="theme-toggle" class="icon-btn" type="button" aria-label="Alternar tema claro e escuro">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="9"></circle>
+        <path d="M12 3a9 9 0 0 0 0 18Z" fill="currentColor" stroke="none"></path>
+      </svg>
+    </button>
+  </header>
+
+  <p id="erro" class="erro" role="alert" hidden></p>
+
+  <main class="wrap">
+    <p id="carregando" class="estado">Carregando…</p>
+
+    <section id="invalido" class="estado" hidden>
+      <h1>Esse link não abre nada</h1>
+      <p>Pede pro motorista te mandar o seu link de novo. Cada pessoa tem o seu.</p>
+    </section>
+
+    <div id="app" hidden>
+      <h1 id="ola" class="ola"></h1>
+      <p id="escala" class="muted escala"></p>
+
+      <div id="acoes" class="acoes"></div>
+
+      <nav class="mesnav">
+        <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+        </button>
+        <h2 id="mes-nome" class="mesnav__nome">—</h2>
+        <button id="mes-prox" class="icon-btn" type="button" aria-label="Próximo mês">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"></path></svg>
+        </button>
+      </nav>
+
+      <section class="resumo">
+        <p id="resumo-valor" class="resumo__valor num">—</p>
+        <p id="resumo-linha" class="muted resumo__linha"></p>
+      </section>
+
+      <section>
+        <span class="label">seus dias</span>
+        <ul id="dias" class="dias"></ul>
+      </section>
+    </div>
+  </main>
+</Layout>
+
+<style is:global>
+  .erro {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    margin: 0;
+    padding: 0.7rem 1rem;
+    background: var(--accent-strong);
+    color: #fff;
+    font-size: 0.85rem;
+  }
+
+  .estado {
+    margin-top: 3rem;
+    color: var(--text-secondary);
+    font-size: 0.95rem;
+  }
+
+  .estado h1 {
+    font-size: 1.3rem;
+    color: var(--text-primary);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+
+  .ola {
+    font-size: 1.75rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    margin-top: 1.75rem;
+  }
+
+  .escala {
+    font-size: 0.95rem;
+    margin-top: 0.15rem;
+  }
+
+  .acoes {
+    display: grid;
+    gap: 0.6rem;
+    margin: 1.5rem 0 0.5rem;
+  }
+
+  .acoes .btn[data-marcada='1'] {
+    background: none;
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .acoes__nota {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+
+  .mesnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 2rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .mesnav__nome {
+    font-size: 1rem;
+    font-weight: 600;
+    text-transform: lowercase;
+  }
+
+  .resumo {
+    margin: 0.75rem 0 1.75rem;
+  }
+
+  .resumo__valor {
+    font-size: 2.5rem;
+    font-weight: 700;
+    letter-spacing: -0.035em;
+    line-height: 1.05;
+    color: var(--accent);
+  }
+
+  .resumo__linha {
+    font-size: 0.85rem;
+    margin-top: 0.35rem;
+  }
+
+  /* Day list: the driver's ledger with a single column. */
+  .dias {
+    display: grid;
+  }
+
+  .dias li {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .dia {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    width: 100%;
+    min-height: 52px;
+    padding: 0 0.15rem;
+    text-align: left;
+  }
+
+  .dia__data {
+    width: 4.5rem;
+    flex: none;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .dia__estado {
+    flex: 1;
+    font-size: 0.9rem;
+  }
+
+  li.hoje-linha .dia {
+    box-shadow: inset 2px 0 0 var(--accent);
+    background: var(--accent-soft);
+  }
+
+  li.hoje-linha .dia__data {
+    color: var(--accent);
+    font-weight: 700;
+  }
+
+  .dia[data-estado='absent'] .dia__estado {
+    color: var(--accent);
+  }
+
+  .dia[data-estado='noride'] .dia__estado,
+  .dia[data-estado='off'] .dia__estado {
+    color: var(--text-faint);
+  }
+
+  .mark {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    flex: none;
+    border-radius: 50%;
+    background: var(--p0);
+  }
+
+  .mark--absent {
+    width: auto;
+    height: auto;
+    background: none;
+    color: var(--accent);
+    font-weight: 700;
+    line-height: 1;
+  }
+
+  .mark--off {
+    width: 8px;
+    height: 1px;
+    border-radius: 0;
+    background: var(--border-hover);
+  }
+</style>
+
+<script>
+  import {
+    addDays,
+    brl,
+    isRideDay,
+    monthDays,
+    monthKey,
+    monthLabel,
+    parseYmd,
+    report,
+    weekdayList,
+    WEEKDAY_SHORT,
+    ymd,
+  } from '../lib/rides';
+  import { feriados } from '../lib/feriados';
+  import { configured, loadMonth, loadPassengerByToken, setAbsence, type PassengerRow } from '../lib/db';
+
+  const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+
+  const hoje = ymd(new Date());
+  const token = new URLSearchParams(location.search).get('t') ?? '';
+  let cursor = new Date();
+  let eu: PassengerRow;
+  let mes: Awaited<ReturnType<typeof loadMonth>>;
+
+  function erro(msg: string) {
+    const el = $('erro');
+    el.textContent = msg;
+    el.hidden = false;
+    setTimeout(() => (el.hidden = true), 6000);
+  }
+
+  async function commit(fn: () => Promise<void>) {
+    try {
+      await fn();
+      await carregar();
+    } catch (e: any) {
+      erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+    }
+  }
+
+  const escalado = (dia: string) =>
+    eu.weekdays.includes(parseYmd(dia).getDay()) &&
+    dia >= eu.start_date &&
+    (!eu.end_date || dia <= eu.end_date);
+
+  const faltou = (dia: string) => mes.absences.get(eu.id)?.has(dia) ?? false;
+
+  function rotulo(dia: string) {
+    const d = parseYmd(dia);
+    return `${WEEKDAY_SHORT[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
+  async function carregar() {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const dias = monthDays(ano, m0);
+    // The month on screen may not contain today, and the buttons up top speak
+    // about today and tomorrow. So the fetched window covers both.
+    const de = dias[0] < hoje ? dias[0] : hoje;
+    const ate = dias[dias.length - 1] > addDays(hoje, 1) ? dias[dias.length - 1] : addDays(hoje, 1);
+    try {
+      mes = await loadMonth(de, ate, monthKey(ano, m0));
+      render();
+    } catch (e: any) {
+      erro(e?.message ?? 'Não deu para carregar o mês.');
+    }
+  }
+
+  function render() {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const dias = monthDays(ano, m0);
+    const fer = feriados(ano);
+
+    $('ola').textContent = `Oi, ${eu.name.split(' ')[0]}`;
+    $('escala').textContent = `Você vai ${weekdayList(eu.weekdays)}. Só marque aqui quando não for.`;
+    $('mes-nome').textContent = monthLabel(ano, m0);
+
+    renderAcoes();
+
+    const r = report(eu, dias, mes.absences.get(eu.id) ?? new Set(), mes.overrides, fer, hoje);
+    $('resumo-valor').textContent = brl(r.total);
+    const partes = [`${r.done} ${r.done === 1 ? 'carona' : 'caronas'} × ${brl(eu.fare)}`];
+    if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'}`);
+    if (r.plannedTotal > r.total) partes.push(`${brl(r.plannedTotal)} se o mês fechar como está`);
+    $('resumo-linha').textContent = partes.join(' · ');
+
+    renderDias(dias, fer);
+  }
+
+  /** The two taps that cover 95% of cases: today and tomorrow. */
+  function renderAcoes() {
+    const el = $('acoes');
+    el.innerHTML = '';
+    // The next fourteen days can cross New Year's, so the holiday map covers
+    // both years.
+    const a0 = Number(hoje.slice(0, 4));
+    const a1 = Number(addDays(hoje, 14).slice(0, 4));
+    const fer = new Map([...feriados(a0), ...feriados(a1)]);
+
+    const candidatos: string[] = [];
+    for (const dia of [hoje, addDays(hoje, 1)]) {
+      if (escalado(dia) && isRideDay(dia, mes.overrides, fer)) candidatos.push(dia);
+    }
+
+    if (candidatos.length === 0) {
+      // Neither today nor tomorrow is theirs: offer the next day that is.
+      let d = hoje;
+      for (let i = 0; i < 14 && candidatos.length === 0; i++) {
+        d = addDays(d, 1);
+        if (escalado(d) && isRideDay(d, mes.overrides, fer)) candidatos.push(d);
+      }
+    }
+
+    if (candidatos.length === 0) {
+      const p = document.createElement('p');
+      p.className = 'acoes__nota';
+      p.textContent = 'Nenhuma carona sua nos próximos dias.';
+      el.append(p);
+      return;
+    }
+
+    candidatos.forEach((dia, i) => {
+      const marcada = faltou(dia);
+      const quando = dia === hoje ? 'hoje' : dia === addDays(hoje, 1) ? 'amanhã' : rotulo(dia);
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = `btn btn--block ${i === 0 ? 'btn--primary btn--lg' : 'btn--ghost'}`;
+      b.dataset.marcada = marcada ? '1' : '0';
+      b.textContent = marcada ? `Voltei atrás, vou ${quando}` : `Não vou ${quando}`;
+      b.onclick = () => commit(() => setAbsence(eu.id, dia, !marcada));
+      el.append(b);
+    });
+
+    const nota = document.createElement('p');
+    nota.className = 'acoes__nota';
+    const marcadas = candidatos.filter(faltou).map((d) => (d === hoje ? 'hoje' : 'amanhã'));
+    nota.textContent = marcadas.length
+      ? `Falta de ${marcadas.join(' e ')} já registrada. O motorista já vê.`
+      : 'Nos dias em que você vai, a carona entra sozinha.';
+    el.append(nota);
+  }
+
+  function renderDias(dias: string[], fer: Map<string, string>) {
+    const el = $('dias');
+    el.innerHTML = '';
+
+    for (const dia of dias) {
+      if (!escalado(dia)) continue;
+      const rodou = isRideDay(dia, mes.overrides, fer);
+      const falta = faltou(dia);
+      const estado = !rodou ? 'noride' : falta ? 'absent' : 'ride';
+
+      const li = document.createElement('li');
+      if (dia === hoje) li.className = 'hoje-linha';
+
+      const texto = !rodou
+        ? (fer.get(dia) ?? 'sem carona')
+        : falta
+          ? 'faltou'
+          : dia > hoje
+            ? 'vai'
+            : 'foi';
+      const marca = !rodou
+        ? '<span class="mark mark--off"></span>'
+        : falta
+          ? '<span class="mark mark--absent">✕</span>'
+          : '<span class="mark"></span>';
+
+      if (!rodou) {
+        const div = document.createElement('div');
+        div.className = 'dia';
+        div.dataset.estado = estado;
+        div.innerHTML = `<span class="dia__data">${rotulo(dia)}</span>${marca}<span class="dia__estado">${texto}</span>`;
+        li.append(div);
+      } else {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'dia';
+        b.dataset.estado = estado;
+        b.setAttribute('aria-pressed', String(falta));
+        b.setAttribute('aria-label', `${rotulo(dia)}: ${falta ? 'faltou. Desfazer.' : 'marcar falta'}`);
+        b.innerHTML = `<span class="dia__data">${rotulo(dia)}</span>${marca}<span class="dia__estado">${texto}</span>`;
+        b.onclick = () => commit(() => setAbsence(eu.id, dia, !falta));
+        li.append(b);
+      }
+      el.append(li);
+    }
+  }
+
+  $('mes-ant').onclick = () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
+    carregar();
+  };
+  $('mes-prox').onclick = () => {
+    cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+    carregar();
+  };
+
+  async function iniciar() {
+    if (!configured || !token) {
+      $('carregando').hidden = true;
+      $('invalido').hidden = false;
+      return;
+    }
+    try {
+      const p = await loadPassengerByToken(token);
+      if (!p) {
+        $('carregando').hidden = true;
+        $('invalido').hidden = false;
+        return;
+      }
+      eu = p;
+      $('carregando').hidden = true;
+      $('app').hidden = false;
+      await carregar();
+    } catch (e: any) {
+      $('carregando').hidden = true;
+      $('invalido').hidden = false;
+    }
+  }
+
+  iniciar();
+</script>
