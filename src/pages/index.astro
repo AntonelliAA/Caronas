@@ -86,8 +86,8 @@ import Wheel from '../components/Wheel.astro';
       </section>
 
       <section id="folha-secao">
-        <span class="label">folha do mês</span>
         <table class="folha">
+          <caption class="folha__cap">folha do mês</caption>
           <thead><tr id="folha-head"></tr></thead>
           <tbody id="folha-body"></tbody>
         </table>
@@ -188,21 +188,25 @@ import Wheel from '../components/Wheel.astro';
   }
 
   /* --- Today --- */
+  /* The first block on the screen, because the daily question is who is in the
+     car, not what the month adds up to. */
   .hoje {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.4rem;
+    gap: 0.45rem;
     align-items: center;
     min-height: var(--tap);
-    margin-bottom: 1.25rem;
-    padding-bottom: 1.25rem;
+    margin: 0.25rem 0 1.5rem;
+    padding-bottom: 1.4rem;
     border-bottom: 1px solid var(--border);
   }
 
   .hoje__dia {
     width: 100%;
+    margin-bottom: 0.55rem;
     font-family: var(--font-mono);
-    font-size: 0.7rem;
+    font-size: 0.75rem;
+    letter-spacing: 0.02em;
     color: var(--accent);
   }
 
@@ -214,13 +218,14 @@ import Wheel from '../components/Wheel.astro';
   .pill {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
+    gap: 0.5rem;
     min-height: var(--tap);
-    padding: 0.35rem 0.85rem 0.35rem 0.35rem;
-    border: 1px solid var(--border);
+    padding: 0.4rem 1rem 0.4rem 0.8rem;
+    border: 1px solid var(--border-hover);
     border-radius: var(--radius-full);
-    font-size: 0.9rem;
-    font-weight: 500;
+    font-size: 0.95rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   .pill[data-falta='1'] {
@@ -231,21 +236,25 @@ import Wheel from '../components/Wheel.astro';
   }
 
   /* --- Total --- */
+  /* The money is the answer to a question asked twice a month, so it is set
+     in ink. Red is left to mean "now" and "exception", which is the only way
+     the today rule and the absence crosses keep their force. */
   .total__valor {
-    font-size: 2.75rem;
+    font-size: 3rem;
     font-weight: 700;
-    letter-spacing: -0.035em;
-    line-height: 1.05;
-    color: var(--accent);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
   }
 
   .total__linha {
     font-size: 0.85rem;
-    margin-top: 0.35rem;
+    margin-top: 0.5rem;
   }
 
   .total__acoes {
-    margin: 1rem 0 1.75rem;
+    margin: 1.1rem 0 2rem;
   }
 
   /* --- People / payment --- */
@@ -343,6 +352,20 @@ import Wheel from '../components/Wheel.astro';
     table-layout: fixed;
   }
 
+  /* The caption is the table's own title, which is what a screen reader reads
+     before deciding whether to walk the grid.
+     It carries no shared class on purpose: .label sets display: block, and a
+     display value on a table element throws away its native box. As a block the
+     caption fell below the header row and wrapped to two lines. */
+  .folha__cap {
+    caption-side: top;
+    text-align: left;
+    padding-bottom: 0.55rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+  }
+
   .folha th,
   .folha td {
     padding: 0;
@@ -351,7 +374,7 @@ import Wheel from '../components/Wheel.astro';
 
   .folha__nome {
     display: block;
-    margin-top: 0.3rem;
+    margin-top: 0.2rem;
     font-family: var(--font-mono);
     font-size: 0.65rem;
     font-weight: 400;
@@ -366,16 +389,16 @@ import Wheel from '../components/Wheel.astro';
     top: 56px;
     vertical-align: bottom;
     z-index: 10;
-    padding: 0.5rem 0;
+    padding: 0.35rem 0 0.5rem;
     background: var(--bg-primary);
     border-bottom: 1px solid var(--border-hover);
   }
 
   .folha thead th:first-child {
-    width: 4.2rem;
+    width: 4.6rem;
     text-align: left;
     font-family: var(--font-mono);
-    font-size: 0.65rem;
+    font-size: 0.68rem;
     font-weight: 400;
     color: var(--text-faint);
   }
@@ -383,7 +406,7 @@ import Wheel from '../components/Wheel.astro';
   .folha tbody th {
     text-align: left;
     font-family: var(--font-mono);
-    font-size: 0.72rem;
+    font-size: 0.78rem;
     font-weight: 400;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
@@ -393,15 +416,29 @@ import Wheel from '../components/Wheel.astro';
     border-bottom: 1px solid var(--border);
   }
 
+  /* Today reads as a cursor sitting on the month, not as a highlighted band:
+     a solid rule down the left and the date in red, with the fill barely
+     there so the marks in the row stay the thing you look at. */
+  .folha tbody tr.hoje-linha {
+    border-bottom-color: color-mix(in srgb, var(--accent) 35%, transparent);
+  }
+
   .folha tbody tr.hoje-linha th,
   .folha tbody tr.hoje-linha td {
-    background: var(--accent-soft);
+    background: color-mix(in srgb, var(--accent) 6%, transparent);
   }
 
   .folha tbody tr.hoje-linha th {
     color: var(--accent);
     font-weight: 700;
-    box-shadow: inset 2px 0 0 var(--accent);
+    box-shadow: inset 3px 0 0 var(--accent);
+  }
+
+  @media (hover: hover) {
+    .folha tbody tr:not(.semana-linha):hover th,
+    .folha tbody tr:not(.semana-linha):hover td {
+      background: var(--bg-card-hover);
+    }
   }
 
   .dia-btn {
@@ -424,8 +461,8 @@ import Wheel from '../components/Wheel.astro';
 
   .mark {
     display: inline-block;
-    width: 11px;
-    height: 11px;
+    width: 12px;
+    height: 12px;
     border-radius: 50%;
     background: var(--pc);
   }
@@ -442,10 +479,10 @@ import Wheel from '../components/Wheel.astro';
   }
 
   .mark--off {
-    width: 8px;
+    width: 10px;
     height: 1px;
     border-radius: 0;
-    background: var(--border-hover);
+    background: var(--border);
   }
 
   /* An extra ride is the same hue, hollow, so it reads as "counted, but not on
@@ -459,21 +496,29 @@ import Wheel from '../components/Wheel.astro';
      element in the selector this row renders centred and the note drifts into
      the middle of the table. */
   .folha td.sem-carona {
-    padding: 0.55rem 0;
+    padding: 0.75rem 0;
     font-size: 0.72rem;
     color: var(--text-faint);
     text-align: left;
   }
 
-  .sem-carona::before {
-    content: '';
-    display: inline-block;
-    width: 1.5rem;
-    height: 1px;
-    margin-right: 0.5rem;
-    vertical-align: middle;
-    background: var(--border-hover);
+  /* Weeks are the unit a carpool is actually planned in: "segunda a quarta"
+     is a weekly sentence. Without this rule the month is 21 identical rows and
+     nobody can find the week of the 17th. */
+  .folha td.semana {
+    padding: 1.1rem 0 0.35rem;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--text-faint);
   }
+
+  .folha tr.semana-linha {
+    border-bottom: 1px solid var(--border-hover);
+  }
+
+
 
   .legenda {
     display: flex;
@@ -620,6 +665,7 @@ import Wheel from '../components/Wheel.astro';
     monthKey,
     monthLabel,
     nextMark,
+    weekStart,
     parseYmd,
     report,
     weekdayList,
@@ -895,8 +941,23 @@ import Wheel from '../components/Wheel.astro';
     });
 
     const linhas = ledgerDays(pessoas, dias, mes.marks);
+    let semanaAtual = '';
     for (const dia of linhas) {
       const d = parseYmd(dia);
+
+      const semana = weekStart(dia);
+      if (semana !== semanaAtual) {
+        semanaAtual = semana;
+        const trS = document.createElement('tr');
+        trS.className = 'semana-linha';
+        const tdS = document.createElement('td');
+        tdS.className = 'semana';
+        tdS.colSpan = pessoas.length + 1;
+        tdS.textContent = `semana de ${parseYmd(semana).getDate()}`;
+        trS.append(tdS);
+        body.append(trS);
+      }
+
       const tr = document.createElement('tr');
       if (dia === hoje) tr.className = 'hoje-linha';
 
