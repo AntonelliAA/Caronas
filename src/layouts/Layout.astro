@@ -6,7 +6,9 @@ interface Props {
 }
 
 const { title } = Astro.props;
-const base = import.meta.env.BASE_URL;
+// BASE_URL is '/' at the root but '/Caronas' with a base set, without a
+// trailing slash, so concatenating straight onto it yields /Caronasfavicon.svg.
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
 ---
 
 <!doctype html>

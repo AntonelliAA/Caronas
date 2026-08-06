@@ -1044,7 +1044,9 @@ import Wheel from '../components/Wheel.astro';
   // ----------------------------------------------------------------- share ---
 
   function linkDe(p: PassengerRow) {
-    return `${location.origin}${import.meta.env.BASE_URL}p/?t=${p.token}`;
+    // Same trailing-slash trap as the layout: BASE_URL has no slash of its own.
+    const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+    return `${location.origin}${base}p/?t=${p.token}`;
   }
 
   async function compartilhar(p: PassengerRow) {

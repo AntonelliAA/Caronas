@@ -5,8 +5,9 @@ import { defineConfig } from 'astro/config';
 // browser, so this deploys to GitHub Pages, Netlify, Vercel, or any folder
 // served over HTTP.
 export default defineConfig({
-  // Deploying to a GitHub *project page* (user.github.io/caronas)? Uncomment the
-  // line below. Internal links use import.meta.env.BASE_URL, so they follow this
-  // change on their own.
-  // base: '/caronas',
+  // Published as a GitHub project page under the same domain as the portfolio:
+  // antonelliaa.github.io/Caronas/. Internal links read
+  // import.meta.env.BASE_URL, so they follow this on their own. The path is
+  // case sensitive and has to match the repository name.
+  base: '/Caronas',
 });
