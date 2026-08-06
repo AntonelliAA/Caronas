@@ -1,0 +1,23 @@
+---
+interface Props {
+  size?: number;
+}
+const { size = 18 } = Astro.props;
+---
+
+<!-- Steering wheel: rim, hub, three spokes. It is the object the app is about,
+     and the only drawn thing on the site — everything else is type and rules. -->
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 24 24"
+  fill="none"
+  stroke="currentColor"
+  stroke-width="1.8"
+  stroke-linecap="round"
+  aria-hidden="true"
+>
+  <circle cx="12" cy="12" r="9"></circle>
+  <circle cx="12" cy="12" r="3"></circle>
+  <path d="M12 15v6M9.4 10.5 4.2 7.5M14.6 10.5 19.8 7.5"></path>
+</svg>

@@ -1,0 +1,17 @@
+{
+  "name": "Caronas",
+  "short_name": "Caronas",
+  "description": "Conta os dias de carona de cada pessoa e fecha o mês sozinho.",
+  "lang": "pt-BR",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbfaf9",
+  "theme_color": "#c1121f",
+  "start_url": "./",
+  "scope": "./",
+  "icons": [
+    { "src": "./icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

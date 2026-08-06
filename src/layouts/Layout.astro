@@ -1,0 +1,64 @@
+---
+import '../styles/global.css';
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+const base = import.meta.env.BASE_URL;
+---
+
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="description" content="Contador de caronas: soma sozinho os dias de cada pessoa e fecha a conta no fim do mês." />
+    <meta name="robots" content="noindex" />
+
+    <title>{title}</title>
+
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <link rel="apple-touch-icon" href={`${base}icon-180.png`} />
+    <link rel="manifest" href={`${base}manifest.webmanifest`} />
+    <meta name="theme-color" content="#fbfaf9" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0c1120" media="(prefers-color-scheme: dark)" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Caronas" />
+
+    <!-- Runs before first paint, otherwise the screen flashes the wrong palette. -->
+    <script is:inline>
+      try {
+        const saved = localStorage.getItem('theme');
+        if (saved === 'light' || saved === 'dark') {
+          document.documentElement.setAttribute('data-theme', saved);
+        }
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <slot />
+
+    <script>
+      // Toggles light/dark and carries the browser chrome color along: the
+      // <meta media> pair alone does not follow a manual choice.
+      const btn = document.getElementById('theme-toggle');
+      btn?.addEventListener('click', () => {
+        const root = document.documentElement;
+        const atual =
+          root.getAttribute('data-theme') ??
+          (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+        const proximo = atual === 'dark' ? 'light' : 'dark';
+        root.setAttribute('data-theme', proximo);
+        document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]').forEach((m) => {
+          m.media = '';
+          m.content = proximo === 'dark' ? '#0c1120' : '#fbfaf9';
+        });
+        try {
+          localStorage.setItem('theme', proximo);
+        } catch {}
+      });
+    </script>
+  </body>
+</html>
