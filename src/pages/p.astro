@@ -129,11 +129,12 @@ import Wheel from '../components/Wheel.astro';
   }
 
   .resumo__valor {
-    font-size: 2.5rem;
+    font-size: 2.75rem;
     font-weight: 700;
-    letter-spacing: -0.035em;
-    line-height: 1.05;
-    color: var(--accent);
+    letter-spacing: -0.045em;
+    line-height: 1;
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
   }
 
   .resumo__linha {
@@ -161,10 +162,10 @@ import Wheel from '../components/Wheel.astro';
   }
 
   .dia__data {
-    width: 4.5rem;
+    width: 4.9rem;
     flex: none;
     font-family: var(--font-mono);
-    font-size: 0.78rem;
+    font-size: 0.8rem;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
   }
@@ -175,8 +176,8 @@ import Wheel from '../components/Wheel.astro';
   }
 
   li.hoje-linha .dia {
-    box-shadow: inset 2px 0 0 var(--accent);
-    background: var(--accent-soft);
+    box-shadow: inset 3px 0 0 var(--accent);
+    background: color-mix(in srgb, var(--accent) 5%, transparent);
   }
 
   li.hoje-linha .dia__data {
@@ -195,8 +196,8 @@ import Wheel from '../components/Wheel.astro';
 
   .mark {
     display: inline-block;
-    width: 11px;
-    height: 11px;
+    width: 12px;
+    height: 12px;
     flex: none;
     border-radius: 50%;
     background: var(--p0);
@@ -303,9 +304,10 @@ import Wheel from '../components/Wheel.astro';
 
     const r = report(eu, dias, marcas(), mes.overrides, fer, hoje);
     $('resumo-valor').textContent = brl(r.total);
+    // No projection on this screen. A number for a month that has not happened
+    // yet reads as a bill, and it is not one until the days are actually ridden.
     const partes = [`${r.done} ${r.done === 1 ? 'carona' : 'caronas'} × ${brl(eu.fare)}`];
     if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'}`);
-    if (r.plannedTotal > r.total) partes.push(`${brl(r.plannedTotal)} se o mês fechar como está`);
     $('resumo-linha').textContent = partes.join(' · ');
 
     renderDias(dias, fer);
