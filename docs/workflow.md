@@ -50,9 +50,11 @@ granularity you commit at.
 
 The subject line follows [Google's CL description
 rules](https://google.github.io/eng-practices/review/developer/cl-descriptions.html).
-The `Test plan:` trailer is borrowed from the Phabricator template Meta uses,
+The `Test-plan:` trailer is borrowed from the Phabricator template Meta uses,
 because `docs/agents.md` already requires evidence and the commit is where it
-stays attached.
+stays attached. Meta spells the field `Test Plan`; the hyphen is not cosmetic,
+because a git trailer token cannot contain a space and one invalid line voids
+every trailer in the block.
 
 ```
 <area>: <complete sentence in the imperative, no trailing period>
@@ -61,7 +63,8 @@ stays attached.
 
 <why this approach and not the obvious alternative. Any limitation left behind.>
 
-Test plan: <what you ran and what it printed>
+Test-plan: <what you ran and what it printed>
+Co-Authored-By: <agent, when one wrote the commit>
 ```
 
 Rules that matter:
@@ -87,8 +90,29 @@ end_date. Filtering in the query would have been narrower, but the same
 range has to hold for the month projection, and that is computed in the
 browser.
 
-Test plan: npm test, 11 passing, including a new case for a mid-month join.
+Test-plan: npm test, 11 passing, including a new case for a mid-month join.
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 ```
+
+## Attribution
+
+A commit written by an AI agent carries a `Co-Authored-By` trailer naming it.
+Authorship is a fact about how the code got there, and it is worth keeping where
+the fact belongs rather than in someone's memory of the week.
+
+Both trailers sit in the last paragraph with no blank line between them, so
+`git log --format='%(trailers)'` reads them. Two parser rules bite, and both
+fail silently by dropping every trailer in the block rather than complaining:
+
+- the token cannot contain a space, which is why the field is `Test-plan`;
+- a wrapped value continues on an indented line. An unindented second line
+  reads as prose and voids the block.
+
+Keep the value to one line and neither rule can bite. Check with
+`git interpret-trailers --parse` when in doubt.
+
+Commits `40e0764` through `f1c69cc` predate this rule and spell the field
+`Test plan`. They were left alone rather than rewritten.
 
 ## Pull requests
 
