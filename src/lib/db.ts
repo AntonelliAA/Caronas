@@ -25,10 +25,17 @@ export async function loadPassengers(): Promise<PassengerRow[]> {
   return (data ?? []).map(toPassenger);
 }
 
-export async function loadPassengerByToken(token: string): Promise<PassengerRow | null> {
-  const { data, error } = await db.from('passengers').select('*').eq('token', token).maybeSingle();
+/**
+ * The passengers table is closed to anon, so the passenger screen goes through
+ * the one function that trades a token for a person. What comes back never
+ * includes the token, and never includes anybody else.
+ */
+export async function loadPassengerByToken(token: string): Promise<Passenger | null> {
+  const { data, error } = await db.rpc('passenger_by_token', { t: token });
   if (error) throw error;
-  return data ? toPassenger(data) : null;
+  const row = Array.isArray(data) ? data[0] : data;
+  // Not toPassenger: that one promises a token, and this row has none.
+  return row ? { ...row, fare: Number(row.fare) } : null;
 }
 
 /** Everything the month needs, in a single round trip. */

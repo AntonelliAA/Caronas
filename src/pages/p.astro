@@ -235,14 +235,15 @@ import Wheel from '../components/Wheel.astro';
     ymd,
   } from '../lib/rides';
   import { feriados } from '../lib/feriados';
-  import { configured, loadMonth, loadPassengerByToken, setMark, type PassengerRow } from '../lib/db';
+  import { configured, loadMonth, loadPassengerByToken, setMark } from '../lib/db';
+  import type { Passenger } from '../lib/rides';
 
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
   const hoje = ymd(new Date());
   const token = new URLSearchParams(location.search).get('t') ?? '';
   let cursor = new Date();
-  let eu: PassengerRow;
+  let eu: Passenger;
   let mes: Awaited<ReturnType<typeof loadMonth>>;
 
   function erro(msg: string) {

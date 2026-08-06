@@ -4,12 +4,13 @@
 -- Trust model, stated plainly so nobody is surprised later:
 --   · Driver     → a real login (email + password). Only they can touch fare,
 --                  schedule, no-ride days, and payment.
---   · Passenger  → no login. Their personal link carries a token. Anyone
---                  holding any link can read the month and mark or unmark an
---                  absence for anyone. What they cannot do is add a ride:
---                  without a login, every reachable write lowers a bill and
---                  none of them raise one. This is four people who share a car
---                  every day; the money is what needs a lock, and it has one.
+--   · Passenger  → no login. Their personal link carries a token, and the
+--                  token is the only thing that resolves to a person. The
+--                  passengers table is closed to anon entirely, so a visitor
+--                  cannot list names, fares, or anybody else's token.
+--                  With a token in hand they can mark or unmark an absence.
+--                  What they cannot do is add a ride: without a login, every
+--                  reachable write lowers a bill and none of them raise one.
 
 create extension if not exists pgcrypto;
 
@@ -71,6 +72,9 @@ alter table day_marks     enable row level security;
 alter table day_overrides enable row level security;
 alter table payments      enable row level security;
 
+-- Dropped and deliberately not recreated: anon has no business reading names,
+-- fares, or other people's tokens. The drop has to stay here so a database
+-- that ran the earlier version loses it on the next run.
 drop policy if exists "public read"         on passengers;
 drop policy if exists "public read"         on day_marks;
 drop policy if exists "public read"         on day_overrides;
@@ -83,8 +87,9 @@ drop policy if exists "driver"              on day_overrides;
 drop policy if exists "driver"              on payments;
 drop policy if exists "passenger corrects"  on day_marks;
 
--- Everyone reads: both screens have to render a month without a login.
-create policy "public read" on passengers    for select using (true);
+-- The month has to render without a login, so the day tables stay readable.
+-- They are keyed by passenger uuid and say nothing on their own once the
+-- passengers table is closed.
 create policy "public read" on day_marks     for select using (true);
 create policy "public read" on day_overrides for select using (true);
 create policy "public read" on payments      for select using (true);
@@ -104,6 +109,44 @@ create policy "driver" on passengers    for all to authenticated using (true) wi
 create policy "driver" on day_overrides for all to authenticated using (true) with check (true);
 create policy "driver" on payments      for all to authenticated using (true) with check (true);
 
+-- ------------------------------------------------------------ token lookup ---
+-- The passengers table is closed to anon, so a passenger's own link needs one
+-- way in. This is it, and it is the only one.
+--
+-- security definer is what lets the function read a table the caller cannot,
+-- which is exactly why it is written narrowly: it takes a token, returns at
+-- most the one row that matches, and never returns the token column, so one
+-- person's link cannot be traded for anybody else's. search_path is emptied
+-- and every name qualified, so it cannot be pointed at a different table.
+--
+-- Enumeration is not a practical attack on a 16 hex character token, and the
+-- function offers no other way to ask.
+create or replace function public.passenger_by_token(t text)
+returns table (
+  id         uuid,
+  name       text,
+  weekdays   smallint[],
+  fare       numeric,
+  start_date date,
+  end_date   date
+)
+language sql
+security definer
+stable
+set search_path = ''
+as $$
+  select p.id, p.name, p.weekdays, p.fare, p.start_date, p.end_date
+  from public.passengers p
+  where p.token = t
+$$;
+
+revoke execute on function public.passenger_by_token(text) from public;
+grant execute on function public.passenger_by_token(text) to anon, authenticated;
+
+-- PostgREST caches the schema. Without this the function 404s until it
+-- happens to reload on its own.
+notify pgrst, 'reload schema';
+
 -- ---------------------------------------------------------------- example ---
 -- Uncomment and adjust to start with people already registered.
 --
@@ -122,3 +165,7 @@ create policy "driver" on payments      for all to authenticated using (true) wi
 -- alter index absences_day_idx rename to day_marks_day_idx;
 --
 -- Then re-run the whole policy section, which is safe on its own.
+--
+-- If you ran an earlier version where anon could read passengers, the policy
+-- section above already drops it: "public read" on passengers is gone and is
+-- not recreated. Re-running this whole file is enough.
