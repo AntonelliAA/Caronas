@@ -28,15 +28,18 @@ These break silently. The site still renders and the money comes out wrong.
 3. **Only the driver can raise a bill.** The `anon` policies on `day_marks` are
    pinned to `rode = false`. Adding a ride is `rode = true` and needs the login.
    Keep it that way when touching policies.
-4. **Ride math stays pure** and stays in `src/lib/rides.ts`. No DOM, no fetch, no
+4. **`passengers` is closed to `anon`.** Names, fares and tokens are not public
+   and the site is. The passenger screen goes through `passenger_by_token`;
+   never add a public select policy back to that table.
+5. **Ride math stays pure** and stays in `src/lib/rides.ts`. No DOM, no fetch, no
    `Date.now()` inside it, because `today` is always a parameter. Every branch you add
    there needs a case in `test/rides.test.mjs`.
-5. **RLS on every new table**, plus its policies, in `schema.sql`. A table without
+6. **RLS on every new table**, plus its policies, in `schema.sql`. A table without
    RLS is world-writable by anyone holding the anon key.
-6. **Fare, schedule, no-ride days, and payments are driver-only** (`to
+7. **Fare, schedule, no-ride days, and payments are driver-only** (`to
    authenticated`). Absences are deliberately open, which is what lets a
    passenger use their link without a login.
-7. **Page `<style>` blocks are `is:global`.** Astro scopes styles to elements in
+8. **Page `<style>` blocks are `is:global`.** Astro scopes styles to elements in
    the template, and most of the UI is built in JS at runtime, so scoped rules
    never reach it.
 

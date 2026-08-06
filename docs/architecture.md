@@ -105,13 +105,21 @@ by hand in the Supabase dashboard. The session persists, so the login happens
 once per device.
 
 **`/p/?t=<token>`** is the passenger's. No login. The token identifies them and
-nothing else.
+nothing else, and it is the only key that opens anything: the `passengers` table
+is closed to the anonymous role, so the screen resolves itself through
+`passenger_by_token`, a `security definer` function that takes a token and
+returns that one person without their token in the result. A link cannot be
+traded for another link, and a visitor with no link gets no names at all.
 
-The consequence is written down honestly in the README: anyone holding any link
-can read the month and mark an absence for anyone. What that person cannot do is
-change a fare, a schedule, or a payment, or add a ride. Every write reachable
-without a login lowers a bill; the policies on `day_marks` pin the anon role to
-`rode = false` precisely so that none of them can raise one. For four people who share a car every
+The consequence is written down honestly in the README: anyone holding a link
+can read the month and mark an absence. What that person cannot do is change a
+fare, a schedule, or a payment, or add a ride. Every write reachable without a
+login lowers a bill; the policies on `day_marks` pin the anon role to
+`rode = false` precisely so that none of them can raise one.
+
+The day tables stay readable without a login because both screens have to render
+a month. They are keyed by passenger uuid and, with `passengers` closed, a uuid
+resolves to nothing. For four people who share a car every
 day, that is the right line. The upgrade path, if the group ever grows past
 people who know each other, is Supabase Auth for everyone and policies keyed on
 `auth.uid()`.

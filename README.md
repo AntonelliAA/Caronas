@@ -125,15 +125,20 @@ Worth being explicit, because this is not a banking app:
 
 - **Locked:** price per day, schedules, no-ride days, and payment marking. Driver
   login only.
-- **Open to anyone holding any link:** reading the month, and marking or
-  unmarking an absence for anyone. Not adding a ride: every write reachable
-  without a login takes a day off a bill, and none of them put one on.
+- **Open to anyone holding a link:** reading the month, and marking or
+  unmarking an absence. Not adding a ride: every write reachable without a
+  login takes a day off a bill, and none of them put one on.
+- **Closed to a visitor with no link:** the passengers table itself. Names,
+  fares and tokens are unreadable by the anonymous role. A link resolves
+  through one function that takes a token and returns that person without it,
+  so no link can be traded for another.
 
-So the link is the password, and it does not protect against someone already in
-the group. For four people who share a car every day that is the right line. If
-the group ever grows to include people who do not know each other, the next step
-is a login for everyone (Supabase Auth is already in the project) and policies
-keyed on `auth.uid()`.
+The link is the password. It does not protect against someone already in the
+group, and it is not meant to: they share a car every day. What it does protect
+against is the site being on a public domain, which it is. If the group ever
+grows to include people who do not know each other, the next step is a login for
+everyone (Supabase Auth is already in the project) and policies keyed on
+`auth.uid()`.
 
 ## Docs
 
