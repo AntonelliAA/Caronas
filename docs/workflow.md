@@ -41,6 +41,11 @@ reverted on its own without dragging something unrelated out with it.
   history.
 - Staging is a tool. When a session produced two unrelated things, `git add -p`
   separates them rather than committing both and apologising in the message.
+- **Never `--amend` or rebase a commit that has been pushed.** Amending mints a
+  new SHA, so the branch diverges from its own remote and the next pull tries to
+  merge two versions of one commit. If they touched the same lines, that is a
+  conflict against yourself. Once a commit is on `origin`, correct it with
+  another commit. `4aee46a` is where this was learned.
 
 Six commits on a branch that each say something beat one commit saying
 "implement feature". Reverting, bisecting, and reviewing all work at the
