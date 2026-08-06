@@ -15,39 +15,58 @@ import Wheel from '../components/Wheel.astro';
   </header>
 
   <p id="erro" class="erro" role="alert" hidden></p>
+  <div id="anuncio" class="sr-only" aria-live="polite"></div>
 
   <main class="wrap">
     <p id="carregando" class="estado">Carregando…</p>
 
     <section id="invalido" class="estado" hidden>
-      <h1>Esse link não abre nada</h1>
-      <p>Pede pro motorista te mandar o seu link de novo. Cada pessoa tem o seu.</p>
+      <h1>Link inválido</h1>
+      <p>Peça ao motorista para enviar seu link novamente. Cada passageiro possui um link exclusivo.</p>
     </section>
 
     <div id="app" hidden>
-      <h1 id="ola" class="ola"></h1>
-      <p id="escala" class="muted escala"></p>
+      <section class="cabecalho">
+        <h1 id="ola" class="ola"></h1>
+        <p id="escala" class="escala muted"></p>
+      </section>
 
-      <div id="acoes" class="acoes"></div>
+      <section class="secao-acoes">
+        <span class="label">ações rápidas</span>
+        <div id="acoes" class="acoes"></div>
+      </section>
 
       <nav class="mesnav">
         <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
         </button>
-        <h2 id="mes-nome" class="mesnav__nome">—</h2>
+        <h2 id="mes-nome" class="mesnav__nome"></h2>
         <button id="mes-prox" class="icon-btn" type="button" aria-label="Próximo mês">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"></path></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg>
         </button>
       </nav>
 
-      <section class="resumo">
-        <p id="resumo-valor" class="resumo__valor num">—</p>
+      <section class="resumo card">
+        <div class="resumo__topo">
+          <span class="label">acumulado até hoje</span>
+          <span id="resumo-status" class="badge"></span>
+        </div>
+        <p id="resumo-valor" class="resumo__valor num">R$ 0,00</p>
         <p id="resumo-linha" class="muted resumo__linha"></p>
       </section>
 
-      <section>
-        <span class="label">seus dias</span>
+      <section class="secao-dias">
+        <span class="label">seus dias no mês</span>
         <ul id="dias" class="dias"></ul>
+      </section>
+
+      <section class="ajuda card">
+        <span class="label">como funciona</span>
+        <ul class="ajuda__lista">
+          <li><strong>Caronas automáticas:</strong> As caronas entram sozinhas nos seus dias agendados (<span id="ajuda-escala"></span>).</li>
+          <li><strong>Marque apenas faltas:</strong> Você não precisa confirmar presença. Só toque no botão quando não for andar.</li>
+          <li><strong>Transparência:</strong> O motorista enxerga suas marcações na hora e o valor é atualizado em tempo real.</li>
+        </ul>
       </section>
     </div>
   </main>
@@ -78,34 +97,43 @@ import Wheel from '../components/Wheel.astro';
     margin-bottom: 0.5rem;
   }
 
+  .cabecalho {
+    margin-top: 1.5rem;
+    margin-bottom: 1.25rem;
+  }
+
   .ola {
     font-size: 1.75rem;
     font-weight: 700;
     letter-spacing: -0.03em;
-    margin-top: 1.75rem;
   }
 
   .escala {
-    font-size: 0.95rem;
-    margin-top: 0.15rem;
+    font-size: 0.92rem;
+    margin-top: 0.25rem;
+    line-height: 1.45;
+  }
+
+  .secao-acoes {
+    margin-bottom: 1.75rem;
   }
 
   .acoes {
     display: grid;
     gap: 0.6rem;
-    margin: 1.5rem 0 0.5rem;
   }
 
-  .acoes .btn[data-marcada='1'] {
-    background: none;
+  .acoes .btn[aria-pressed='true'] {
+    background: var(--accent-soft);
     border-color: var(--accent);
     color: var(--accent);
   }
 
   .acoes__nota {
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
     text-align: center;
+    margin-top: 0.25rem;
   }
 
   .mesnav {
@@ -113,7 +141,7 @@ import Wheel from '../components/Wheel.astro';
     align-items: center;
     justify-content: space-between;
     gap: 0.5rem;
-    margin-top: 2rem;
+    margin-top: 1.5rem;
     padding-top: 1.25rem;
     border-top: 1px solid var(--border);
   }
@@ -125,7 +153,21 @@ import Wheel from '../components/Wheel.astro';
   }
 
   .resumo {
-    margin: 0.75rem 0 1.75rem;
+    margin: 0.85rem 0 1.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+
+  .resumo__topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .resumo__topo .label {
+    margin-bottom: 0;
   }
 
   .resumo__valor {
@@ -139,40 +181,88 @@ import Wheel from '../components/Wheel.astro';
 
   .resumo__linha {
     font-size: 0.85rem;
-    margin-top: 0.35rem;
   }
 
-  /* Day list: the driver's ledger with a single column. */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: var(--radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .badge--success {
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    color: var(--success);
+    border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
+  }
+
+  .badge--pending {
+    background: var(--bg-card-hover);
+    color: var(--text-secondary);
+    border: 1px solid var(--border);
+  }
+
+  .secao-dias {
+    margin-bottom: 2rem;
+  }
+
   .dias {
     display: grid;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
   }
 
   .dias li {
     border-bottom: 1px solid var(--border);
   }
 
+  .dias li:last-child {
+    border-bottom: none;
+  }
+
   .dia {
     display: flex;
     align-items: center;
+    justify-content: space-between;
     gap: 0.75rem;
     width: 100%;
-    min-height: 52px;
-    padding: 0 0.15rem;
+    min-height: var(--tap);
+    padding: 0.6rem 0.85rem;
     text-align: left;
+    background: var(--bg-primary);
+    transition: background var(--transition-fast);
+  }
+
+  .dia:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .dia__info {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-width: 0;
   }
 
   .dia__data {
-    width: 4.9rem;
-    flex: none;
     font-family: var(--font-mono);
-    font-size: 0.8rem;
+    font-size: 0.82rem;
     color: var(--text-secondary);
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
   }
 
   .dia__estado {
-    flex: 1;
-    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-size: 0.88rem;
+    font-weight: 500;
   }
 
   li.hoje-linha .dia {
@@ -187,17 +277,21 @@ import Wheel from '../components/Wheel.astro';
 
   .dia[data-estado='absent'] .dia__estado {
     color: var(--accent);
+    font-weight: 600;
   }
 
-  .dia[data-estado='noride'] .dia__estado,
-  .dia[data-estado='off'] .dia__estado {
-    color: var(--text-faint);
+  .dia[data-estado='noride'] .dia__estado {
+    color: var(--text-secondary);
+  }
+
+  .dia[data-estado='ride'] .dia__estado {
+    color: var(--text-primary);
   }
 
   .mark {
     display: inline-block;
-    width: 12px;
-    height: 12px;
+    width: 10px;
+    height: 10px;
     flex: none;
     border-radius: 50%;
     background: var(--p0);
@@ -210,13 +304,30 @@ import Wheel from '../components/Wheel.astro';
     color: var(--accent);
     font-weight: 700;
     line-height: 1;
+    font-size: 0.95rem;
   }
 
   .mark--off {
-    width: 8px;
-    height: 1px;
+    width: 10px;
+    height: 2px;
     border-radius: 0;
-    background: var(--border-hover);
+    background: var(--text-secondary);
+  }
+
+  .ajuda {
+    margin-top: 2rem;
+  }
+
+  .ajuda__lista {
+    display: grid;
+    gap: 0.6rem;
+    font-size: 0.82rem;
+    color: var(--text-secondary);
+    line-height: 1.45;
+  }
+
+  .ajuda__lista strong {
+    color: var(--text-primary);
   }
 </style>
 
@@ -251,6 +362,11 @@ import Wheel from '../components/Wheel.astro';
     el.textContent = msg;
     el.hidden = false;
     setTimeout(() => (el.hidden = true), 6000);
+  }
+
+  function anunciar(msg: string) {
+    const el = $('anuncio');
+    if (el) el.textContent = msg;
   }
 
   async function commit(fn: () => Promise<void>) {
@@ -298,28 +414,37 @@ import Wheel from '../components/Wheel.astro';
     const fer = feriados(ano);
 
     $('ola').textContent = `Oi, ${eu.name.split(' ')[0]}`;
-    $('escala').textContent = `Você vai ${weekdayList(eu.weekdays)}. Só marque aqui quando não for.`;
+    const diasSemana = weekdayList(eu.weekdays);
+    $('escala').textContent = `Sua escala é ${diasSemana}. As caronas entram sozinhas nesses dias e você só marca quando não for.`;
+    $('ajuda-escala').textContent = diasSemana;
     $('mes-nome').textContent = monthLabel(ano, m0);
 
     renderAcoes();
 
     const r = report(eu, dias, marcas(), mes.overrides, fer, hoje);
     $('resumo-valor').textContent = brl(r.total);
-    // No projection on this screen. A number for a month that has not happened
-    // yet reads as a bill, and it is not one until the days are actually ridden.
-    const partes = [`${r.done} ${r.done === 1 ? 'carona' : 'caronas'} × ${brl(eu.fare)}`];
+
+    const pago = mes.paid.has(eu.id);
+    const statusEl = $('resumo-status');
+    if (pago) {
+      statusEl.className = 'badge badge--success';
+      statusEl.textContent = '✓ Pago ao motorista';
+    } else {
+      statusEl.className = 'badge badge--pending';
+      statusEl.textContent = 'A pagar no final do mês';
+    }
+
+    const partes = [`${r.done} ${r.done === 1 ? 'carona realizada' : 'caronas realizadas'} × ${brl(eu.fare)}`];
     if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'}`);
     $('resumo-linha').textContent = partes.join(' · ');
 
     renderDias(dias, fer);
   }
 
-  /** The two taps that cover 95% of cases: today and tomorrow. */
   function renderAcoes() {
     const el = $('acoes');
     el.innerHTML = '';
-    // The next fourteen days can cross New Year's, so the holiday map covers
-    // both years.
+
     const a0 = Number(hoje.slice(0, 4));
     const a1 = Number(addDays(hoje, 14).slice(0, 4));
     const fer = new Map([...feriados(a0), ...feriados(a1)]);
@@ -330,7 +455,6 @@ import Wheel from '../components/Wheel.astro';
     }
 
     if (candidatos.length === 0) {
-      // Neither today nor tomorrow is theirs: offer the next day that is.
       let d = hoje;
       for (let i = 0; i < 14 && candidatos.length === 0; i++) {
         d = addDays(d, 1);
@@ -351,10 +475,18 @@ import Wheel from '../components/Wheel.astro';
       const quando = dia === hoje ? 'hoje' : dia === addDays(hoje, 1) ? 'amanhã' : rotulo(dia);
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = `btn btn--block ${i === 0 ? 'btn--primary btn--lg' : 'btn--ghost'}`;
-      b.dataset.marcada = marcada ? '1' : '0';
+      b.className = `btn btn--block ${i === 0 && !marcada ? 'btn--primary btn--lg' : 'btn--ghost'}`;
+      b.setAttribute('aria-pressed', String(marcada));
+      b.setAttribute(
+        'aria-label',
+        marcada ? `Desfazer falta de ${quando}` : `Marcar falta de ${quando}`,
+      );
       b.textContent = marcada ? `Voltei atrás, vou ${quando}` : `Não vou ${quando}`;
-      b.onclick = () => commit(() => setMark(eu.id, dia, marcada ? null : false));
+      b.onclick = () =>
+        commit(async () => {
+          await setMark(eu.id, dia, marcada ? null : false);
+          anunciar(marcada ? `Falta de ${quando} desfeita.` : `Falta de ${quando} registrada.`);
+        });
       el.append(b);
     });
 
@@ -362,8 +494,8 @@ import Wheel from '../components/Wheel.astro';
     nota.className = 'acoes__nota';
     const marcadas = candidatos.filter(faltou).map((d) => (d === hoje ? 'hoje' : 'amanhã'));
     nota.textContent = marcadas.length
-      ? `Falta de ${marcadas.join(' e ')} já registrada. O motorista já vê.`
-      : 'Nos dias em que você vai, a carona entra sozinha.';
+      ? `Falta de ${marcadas.join(' e ')} registrada. O motorista já vê.`
+      : 'Nas caronas agendadas, a presença entra sozinha.';
     el.append(nota);
   }
 
@@ -383,21 +515,25 @@ import Wheel from '../components/Wheel.astro';
       const texto = !rodou
         ? (fer.get(dia) ?? 'sem carona')
         : falta
-          ? 'faltou'
+          ? 'faltou (descontado)'
           : dia > hoje
-            ? 'vai'
+            ? 'agendado'
             : 'foi';
       const marca = !rodou
-        ? '<span class="mark mark--off"></span>'
+        ? '<span class="mark mark--off" aria-hidden="true"></span>'
         : falta
-          ? '<span class="mark mark--absent">✕</span>'
-          : '<span class="mark"></span>';
+          ? '<span class="mark mark--absent" aria-hidden="true">✕</span>'
+          : '<span class="mark" aria-hidden="true"></span>';
 
       if (!rodou) {
         const div = document.createElement('div');
         div.className = 'dia';
         div.dataset.estado = estado;
-        div.innerHTML = `<span class="dia__data">${rotulo(dia)}</span>${marca}<span class="dia__estado">${texto}</span>`;
+        div.innerHTML = `
+          <div class="dia__info">
+            <span class="dia__data">${rotulo(dia)}</span>
+            <span class="dia__estado">${marca} ${texto}</span>
+          </div>`;
         li.append(div);
       } else {
         const b = document.createElement('button');
@@ -405,9 +541,20 @@ import Wheel from '../components/Wheel.astro';
         b.className = 'dia';
         b.dataset.estado = estado;
         b.setAttribute('aria-pressed', String(falta));
-        b.setAttribute('aria-label', `${rotulo(dia)}: ${falta ? 'faltou. Desfazer.' : 'marcar falta'}`);
-        b.innerHTML = `<span class="dia__data">${rotulo(dia)}</span>${marca}<span class="dia__estado">${texto}</span>`;
-        b.onclick = () => commit(() => setMark(eu.id, dia, falta ? null : false));
+        b.setAttribute(
+          'aria-label',
+          `${rotulo(dia)}: ${falta ? 'falta registrada. Toque para desfazer.' : 'carona confirmada. Toque para marcar falta.'}`,
+        );
+        b.innerHTML = `
+          <div class="dia__info">
+            <span class="dia__data">${rotulo(dia)}</span>
+            <span class="dia__estado">${marca} ${texto}</span>
+          </div>`;
+        b.onclick = () =>
+          commit(async () => {
+            await setMark(eu.id, dia, falta ? null : false);
+            anunciar(falta ? `Falta de ${rotulo(dia)} desfeita.` : `Falta de ${rotulo(dia)} registrada.`);
+          });
         li.append(b);
       }
       el.append(li);
