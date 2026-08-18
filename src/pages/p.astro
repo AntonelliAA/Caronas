@@ -503,6 +503,7 @@ import Wheel from '../components/Wheel.astro';
     monthDays,
     monthKey,
     monthLabel,
+    paidSoFar,
     parseYmd,
     report,
     weekdayList,
@@ -637,15 +638,15 @@ import Wheel from '../components/Wheel.astro';
     valorAnterior = valor;
     elValor.textContent = valor;
 
-    const pago = mes.paid.has(eu.id);
+    const feito = paidSoFar(mes.payments.get(eu.id) ?? []);
+    const quitado = r.total > 0 && feito >= r.total;
     const statusEl = $('resumo-status');
-    if (pago) {
-      statusEl.className = 'badge badge--success';
-      statusEl.textContent = '✓ Mês quitado';
-    } else {
-      statusEl.className = 'badge badge--pending';
-      statusEl.textContent = 'Mês em andamento';
-    }
+    statusEl.className = quitado ? 'badge badge--success' : 'badge badge--pending';
+    statusEl.textContent = quitado
+      ? '✓ Mês quitado'
+      : feito > 0
+        ? `${brl(feito)} de ${brl(r.total)} pago`
+        : 'Mês em andamento';
 
     // The count and the fare that produced the figure above, so it can be
     // checked. Still nothing about what the rest of the month will cost.

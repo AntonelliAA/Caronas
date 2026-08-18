@@ -38,12 +38,14 @@ export async function loadPassengerByToken(token: string): Promise<Passenger | n
   return row ? { ...row, fare: Number(row.fare) } : null;
 }
 
+export type PaymentEntry = { id: string; amount: number; paid_at: string };
+
 /** Everything the month needs, in a single round trip. */
 export async function loadMonth(from: string, to: string, month: string) {
   const [marks, overrides, payments] = await Promise.all([
     db.from('day_marks').select('passenger_id, day, rode').gte('day', from).lte('day', to),
     db.from('day_overrides').select('day, has_ride, note').gte('day', from).lte('day', to),
-    db.from('payments').select('passenger_id, amount, paid_at').eq('month', month),
+    db.from('payments').select('id, passenger_id, amount, paid_at').eq('month', month),
   ]);
   const err = marks.error ?? overrides.error ?? payments.error;
   if (err) throw err;
@@ -53,6 +55,15 @@ export async function loadMonth(from: string, to: string, month: string) {
     let days = byPassenger.get(m.passenger_id);
     if (!days) byPassenger.set(m.passenger_id, (days = new Map()));
     days.set(m.day, m.rode);
+  }
+
+  // A passenger can pay in parts, so this is a list per person, not a single
+  // row: paidSoFar in rides.ts sums it to decide whether the month is settled.
+  const paymentsByPassenger = new Map<string, PaymentEntry[]>();
+  for (const p of payments.data ?? []) {
+    let entries = paymentsByPassenger.get(p.passenger_id);
+    if (!entries) paymentsByPassenger.set(p.passenger_id, (entries = []));
+    entries.push({ id: p.id, amount: Number(p.amount), paid_at: p.paid_at });
   }
 
   return {
@@ -67,7 +78,7 @@ export async function loadMonth(from: string, to: string, month: string) {
         .filter((o) => o.note)
         .map((o) => [o.day, o.note as string] as const),
     ),
-    paid: new Set((payments.data ?? []).map((p) => p.passenger_id)),
+    payments: paymentsByPassenger,
   };
 }
 
@@ -94,11 +105,14 @@ export async function setOverride(day: string, hasRide: boolean | null, note?: s
   if (error) throw error;
 }
 
-export async function setPaid(passengerId: string, month: string, paid: boolean, amount: number) {
-  const q = paid
-    ? db.from('payments').upsert({ passenger_id: passengerId, month, amount })
-    : db.from('payments').delete().eq('passenger_id', passengerId).eq('month', month);
-  const { error } = await q;
+/** One entry in the ledger: money the driver actually received, just now. */
+export async function addPayment(passengerId: string, month: string, amount: number) {
+  const { error } = await db.from('payments').insert({ passenger_id: passengerId, month, amount });
+  if (error) throw error;
+}
+
+export async function removePayment(id: string) {
+  const { error } = await db.from('payments').delete().eq('id', id);
   if (error) throw error;
 }
 

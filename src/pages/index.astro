@@ -157,6 +157,27 @@ import Wheel from '../components/Wheel.astro';
       <button class="apagar" id="f-apagar" type="button" hidden>Remover do grupo</button>
     </form>
   </dialog>
+
+  <dialog id="pagamento" aria-labelledby="pagamento-titulo">
+    <form method="dialog" id="pagamento-form">
+      <h2 id="pagamento-titulo" tabindex="-1">Pagamentos</h2>
+
+      <p id="pagamento-resumo" class="editor__resumo"></p>
+
+      <div id="pagamento-lista"></div>
+
+      <label class="field"><span>Novo pagamento</span>
+        <span class="money"><span aria-hidden="true">R$</span><input type="text" id="f-pagamento-valor" inputmode="decimal" placeholder="0,00" enterkeyhint="done" /></span>
+      </label>
+      <button class="btn btn--ghost btn--block" id="pagamento-adicionar" type="button">Adicionar</button>
+
+      <p id="pagamento-erro" class="editor__erro" role="alert" hidden></p>
+
+      <div class="editor__acoes">
+        <button class="btn btn--primary" value="ok" type="submit">Fechar</button>
+      </div>
+    </form>
+  </dialog>
 </Layout>
 
 <style is:global>
@@ -371,7 +392,7 @@ import Wheel from '../components/Wheel.astro';
     color: var(--text-primary);
   }
 
-  .acao--pago[aria-pressed='true'] {
+  .pessoa[data-status='quitado'] .acao--pago {
     color: var(--success);
   }
 
@@ -403,7 +424,7 @@ import Wheel from '../components/Wheel.astro';
     letter-spacing: -0.02em;
   }
 
-  .pessoa[data-pago='1'] .pessoa__valor {
+  .pessoa[data-status='quitado'] .pessoa__valor {
     color: var(--text-faint);
     text-decoration: line-through;
   }
@@ -846,6 +867,45 @@ import Wheel from '../components/Wheel.astro';
     background: var(--accent-soft);
     font-weight: 600;
   }
+
+  .pagamentos {
+    display: grid;
+    gap: 0.4rem;
+    margin: 1rem 0;
+  }
+
+  .pagamentos li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.5rem 0.2rem 0.5rem 0.65rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .pagamentos time {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+  }
+
+  .pagamentos button {
+    min-height: var(--tap);
+    min-width: var(--tap);
+    color: var(--text-secondary);
+  }
+
+  .pagamentos button:hover {
+    color: var(--accent);
+  }
+
+  .pagamentos-vazio {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    margin: 1rem 0;
+  }
 </style>
 
 <script>
@@ -857,8 +917,10 @@ import Wheel from '../components/Wheel.astro';
     monthDays,
     monthKey,
     monthLabel,
+    money,
     nextMark,
     weekStart,
+    paidSoFar,
     parseBrl,
     parseYmd,
     report,
@@ -868,15 +930,16 @@ import Wheel from '../components/Wheel.astro';
   } from '../lib/rides';
   import { feriados } from '../lib/feriados';
   import {
+    addPayment,
     configured,
     db,
     loadMonth,
     loadPassengers,
     removePassenger,
+    removePayment,
     savePassenger,
     setMark,
     setOverride,
-    setPaid,
     type PassengerRow,
   } from '../lib/db';
   import confetti from 'canvas-confetti';
@@ -897,6 +960,19 @@ import Wheel from '../components/Wheel.astro';
     s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 
   const marksOf = (id: string) => mes.marks.get(id) ?? new Map<string, boolean>();
+
+  /** What a person's payments add up to against what report() says they owe. */
+  const pagamentoStatus = (p: PassengerRow, r: ReturnType<typeof report>) => {
+    const pagos = mes.payments.get(p.id) ?? [];
+    const feito = paidSoFar(pagos);
+    return { pagos, feito, quitado: r.total > 0 && feito >= r.total };
+  };
+
+  const relatorioAtual = (p: PassengerRow) => {
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    return report(p, monthDays(ano, m0), marksOf(p.id), mes.overrides, feriados(ano), hoje);
+  };
 
   const semMovimento = matchMedia('(prefers-reduced-motion: reduce)');
 
@@ -994,7 +1070,6 @@ import Wheel from '../components/Wheel.astro';
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
     const fer = feriados(ano);
-    const chave = monthKey(ano, m0);
 
     $('mes-nome').textContent = monthLabel(ano, m0);
 
@@ -1011,7 +1086,7 @@ import Wheel from '../components/Wheel.astro';
 
     renderHoje();
     renderTotal(relatos);
-    renderPessoas(relatos, chave);
+    renderPessoas(relatos);
     renderFolha(dias, fer);
   }
 
@@ -1126,7 +1201,7 @@ import Wheel from '../components/Wheel.astro';
     $('total-linha').textContent = partes.join(' · ');
   }
 
-  function renderPessoas(relatos: ReturnType<typeof report>[], chave: string) {
+  function renderPessoas(relatos: ReturnType<typeof report>[]) {
     const el = $('pessoas');
     el.innerHTML = '';
 
@@ -1146,10 +1221,11 @@ import Wheel from '../components/Wheel.astro';
 
     pessoas.forEach((p, i) => {
       const r = relatos[i];
-      const pago = mes.paid.has(p.id);
+      const { feito, quitado } = pagamentoStatus(p, r);
+      const parcial = feito > 0 && !quitado;
       const li = document.createElement('li');
       li.className = 'pessoa';
-      li.dataset.pago = pago ? '1' : '0';
+      li.dataset.status = quitado ? 'quitado' : parcial ? 'parcial' : 'pendente';
 
       const detalhe = [
         weekdayList(p.weekdays),
@@ -1176,18 +1252,15 @@ import Wheel from '../components/Wheel.astro';
       const bPago = document.createElement('button');
       bPago.type = 'button';
       bPago.className = 'acao acao--pago';
-      bPago.setAttribute('aria-pressed', String(pago));
-      bPago.innerHTML =
-        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>' +
-        (pago ? 'Pago' : 'Marcar pago');
+      bPago.setAttribute('aria-label', `Pagamentos de ${p.name}`);
+      bPago.innerHTML = quitado
+        ? '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>Pago'
+        : parcial
+          ? `${brl(feito)} de ${brl(r.total)}`
+          : 'Marcar pago';
       bPago.onclick = () => {
-        vibrar(20);
-        // After the write, not before it. Firing on the tap meant a failed
-        // save threw confetti and then an error, with the row still unpaid.
-        commit(async () => {
-          await setPaid(p.id, chave, !pago, r.total);
-          if (!pago) dispararConfetes();
-        }, bPago);
+        vibrar(15);
+        abrirPagamento(p);
       };
 
       const bLink = document.createElement('button');
@@ -1595,6 +1668,108 @@ import Wheel from '../components/Wheel.astro';
     const id = editando.id;
     ($('editor') as HTMLDialogElement).close();
     commit(() => removePassenger(id));
+  });
+
+  // -------------------------------------------------------------- pagamento ---
+
+  let pagando: PassengerRow | null = null;
+
+  const formatoPagamento = new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  function erroPagamento(msg: string | null) {
+    const el = $('pagamento-erro');
+    el.textContent = msg ?? '';
+    el.hidden = !msg;
+  }
+
+  /** Re-reads the current month's state for whoever the dialog is open on. */
+  function renderPagamento() {
+    if (!pagando) return;
+    const r = relatorioAtual(pagando);
+    const { pagos, feito, quitado } = pagamentoStatus(pagando, r);
+
+    $('pagamento-titulo').textContent = `Pagamentos de ${pagando.name.split(' ')[0]}`;
+
+    const resta = money(Math.max(0, r.total - feito));
+    $('pagamento-resumo').innerHTML = `
+      <div class="editor__resumo-header">
+        <span class="editor__resumo-badge">${quitado ? 'Quitado' : feito > 0 ? 'Pago em parte' : 'Nada pago ainda'}</span>
+        <span class="editor__resumo-valor">${brl(feito)} de ${brl(r.total)}</span>
+      </div>
+      <p class="editor__resumo-detalhe">${quitado ? 'Tudo certo por aqui.' : `Faltam ${brl(resta)}.`}</p>`;
+
+    const lista = $('pagamento-lista');
+    lista.replaceChildren();
+    if (pagos.length === 0) {
+      const vazio = document.createElement('p');
+      vazio.className = 'pagamentos-vazio';
+      vazio.textContent = 'Nenhum pagamento registrado ainda.';
+      lista.append(vazio);
+      return;
+    }
+    const ul = document.createElement('ul');
+    ul.className = 'pagamentos';
+    for (const entry of [...pagos].sort((a, b) => a.paid_at.localeCompare(b.paid_at))) {
+      const li = document.createElement('li');
+      li.innerHTML = `<span>${brl(entry.amount)}<time>${formatoPagamento.format(new Date(entry.paid_at))}</time></span>`;
+      const bDel = document.createElement('button');
+      bDel.type = 'button';
+      bDel.setAttribute('aria-label', `Remover pagamento de ${brl(entry.amount)}`);
+      bDel.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M18 6L6 18M6 6l12 12"/></svg>';
+      bDel.onclick = () => {
+        vibrar(15);
+        commit(() => removePayment(entry.id), bDel).then(renderPagamento);
+      };
+      li.append(bDel);
+      ul.append(li);
+    }
+    lista.append(ul);
+  }
+
+  function abrirPagamento(p: PassengerRow) {
+    pagando = p;
+    erroPagamento(null);
+    ($('f-pagamento-valor') as HTMLInputElement).value = '';
+    renderPagamento();
+    ($('pagamento') as HTMLDialogElement).showModal();
+    $('pagamento-titulo').focus();
+  }
+
+  $('pagamento-adicionar').onclick = () => {
+    if (!pagando) return;
+    const input = $('f-pagamento-valor') as HTMLInputElement;
+    const valor = parseBrl(input.value);
+    if (valor === null || valor <= 0) {
+      erroPagamento('Informe um valor maior que zero. Por exemplo: 50,00.');
+      input.focus();
+      return;
+    }
+    erroPagamento(null);
+    vibrar(20);
+    const p = pagando;
+    const chave = monthKey(cursor.getFullYear(), cursor.getMonth());
+    const jaQuitado = pagamentoStatus(p, relatorioAtual(p)).quitado;
+    commit(() => addPayment(p.id, chave, valor), $('pagamento-adicionar')).then(() => {
+      input.value = '';
+      if (pagando?.id !== p.id) return;
+      renderPagamento();
+      if (!jaQuitado && pagamentoStatus(p, relatorioAtual(p)).quitado) dispararConfetes();
+    });
+  };
+
+  // Clicking the backdrop closes the sheet, same as the editor.
+  $('pagamento').addEventListener('click', (ev) => {
+    if (ev.target === $('pagamento')) ($('pagamento') as HTMLDialogElement).close();
+  });
+
+  $('pagamento').addEventListener('close', () => {
+    pagando = null;
   });
 
   // --------------------------------------------------------------- screens ---
