@@ -163,6 +163,15 @@ export function parseBrl(s: string): number | null {
   return Number.isFinite(n) ? money(n) : null;
 }
 
+/**
+ * What a passenger has actually handed over this month, added up from
+ * however many partial payments it took. Summed through `money()` so ten
+ * entries of R$ 0.10 come back as 1.00, not 0.9999999999999999.
+ */
+export function paidSoFar(payments: { amount: number }[]): number {
+  return money(payments.reduce((sum, p) => sum + p.amount, 0));
+}
+
 export type Report = {
   rows: { day: string; state: DayState }[];
   /** Rides that already happened (up to today). This is what they owe. */

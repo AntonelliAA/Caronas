@@ -12,6 +12,7 @@ import {
   monthDays,
   money,
   nextMark,
+  paidSoFar,
   parseBrl,
   parseYmd,
   report,
@@ -173,6 +174,15 @@ test('cents do not turn into a repeating decimal', () => {
   assert.equal(
     report({ ...marcos, fare: 15.15 }, monthDays(2026, 7), noMarks, noOverrides, noHolidays, '2026-08-31').total,
     196.95,
+  );
+});
+
+test('paidSoFar adds up partial payments without float drift', () => {
+  assert.equal(paidSoFar([]), 0);
+  assert.equal(paidSoFar([{ amount: 50 }, { amount: 70 }]), 120);
+  assert.equal(
+    paidSoFar(Array.from({ length: 10 }, () => ({ amount: 0.1 }))),
+    1,
   );
 });
 
