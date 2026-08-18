@@ -27,6 +27,7 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .idea/
 *.swp
+.claude/
 
 # os
 .DS_Store
@@ -36,3 +37,4 @@ Thumbs.db
 # in case one is ever written next to the source
 _shot*.html
 _light.html
+.mcp.json
