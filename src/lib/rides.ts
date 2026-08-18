@@ -125,6 +125,44 @@ export function money(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
+/**
+ * A typed fare -> cents, or null when it is not a number at all.
+ *
+ * Null rather than 0 on purpose. A fare that silently becomes zero prices
+ * every ride that person takes at nothing, and the screen shows a confident
+ * R$ 0,00 instead of complaining, so the caller has to be forced to notice.
+ *
+ * Both separators are accepted, because a phone keypad offers both and people
+ * type either one:
+ *
+ * - both present: the last one is the decimal, the other groups thousands, so
+ *   '1.234,56' and '1,234.56' both come back as 1234.56;
+ * - only a comma: it is the decimal, always. A comma never groups thousands in
+ *   pt-BR, so '20,999' is twenty reais and change, not twenty thousand;
+ * - only a period: the decimal, unless exactly three digits follow it, because
+ *   '1.234' is a thousand and change here and '18.50' is a keypad typing cents;
+ * - a separator repeated: grouping.
+ */
+export function parseBrl(s: string): number | null {
+  const cleaned = s.replace(/[^\d.,]/g, '');
+  if (!/\d/.test(cleaned)) return null;
+
+  const virgulas = (cleaned.match(/,/g) ?? []).length;
+  const pontos = (cleaned.match(/\./g) ?? []).length;
+  const ultimo = Math.max(cleaned.lastIndexOf(','), cleaned.lastIndexOf('.'));
+
+  let decimal: number;
+  if (virgulas && pontos) decimal = ultimo;
+  else if (virgulas) decimal = virgulas === 1 ? ultimo : -1;
+  else if (pontos) decimal = pontos === 1 && cleaned.length - ultimo - 1 !== 3 ? ultimo : -1;
+  else decimal = -1;
+
+  const inteiro = (decimal === -1 ? cleaned : cleaned.slice(0, decimal)).replace(/[.,]/g, '');
+  const centavos = decimal === -1 ? '' : cleaned.slice(decimal + 1).replace(/[.,]/g, '');
+  const n = Number(`${inteiro || '0'}.${centavos || '0'}`);
+  return Number.isFinite(n) ? money(n) : null;
+}
+
 export type Report = {
   rows: { day: string; state: DayState }[];
   /** Rides that already happened (up to today). This is what they owe. */

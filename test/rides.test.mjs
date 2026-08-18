@@ -12,6 +12,7 @@ import {
   monthDays,
   money,
   nextMark,
+  parseBrl,
   parseYmd,
   report,
   weekdayList,
@@ -204,4 +205,30 @@ test('weekdayList reads like speech', () => {
   assert.equal(weekdayList([2]), 'ter');
   assert.equal(weekdayList([1, 2, 3, 4, 5]), 'de seg a sex');
   assert.equal(weekdayList([0, 1, 2, 3, 4, 5, 6]), 'todos os dias');
+});
+
+test('parseBrl reads a fare the way somebody types it', () => {
+  // A phone keypad offers both separators and people use either.
+  assert.equal(parseBrl('18,50'), 18.5);
+  assert.equal(parseBrl('18.50'), 18.5);
+  assert.equal(parseBrl('18'), 18);
+  assert.equal(parseBrl('R$ 20,00'), 20);
+  assert.equal(parseBrl('0,01'), 0.01);
+  // A comma never groups thousands in pt-BR, so this is twenty reais.
+  assert.equal(parseBrl('20,999'), 21);
+  // A period with exactly three digits behind it does.
+  assert.equal(parseBrl('1.234'), 1234);
+  assert.equal(parseBrl('1.234,56'), 1234.56);
+  assert.equal(parseBrl('1,234.56'), 1234.56);
+  assert.equal(parseBrl('1.234.567,89'), 1234567.89);
+});
+
+test('parseBrl refuses what is not a number instead of calling it zero', () => {
+  // A fare that silently becomes 0 prices every ride that person takes at
+  // nothing, and the screen shows R$ 0,00 without complaining.
+  assert.equal(parseBrl(''), null);
+  assert.equal(parseBrl('   '), null);
+  assert.equal(parseBrl('abc'), null);
+  assert.equal(parseBrl('R$'), null);
+  assert.equal(parseBrl('0'), 0); // an actual zero is still a number
 });
