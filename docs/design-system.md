@@ -65,6 +65,29 @@ question being asked is "who rode when", which reads down a column. Days where
 nobody is scheduled are dropped, so weekends disappear and August fits in about
 twenty rows.
 
+## The person sheet
+
+The editor is a bottom sheet under 720px and a centred card above it. It is the
+only place in the app where anybody types, and it is reached with one thumb, so
+on a phone it rises from the edge the thumb is already on.
+
+It carries a live projection of what the schedule is worth: *20 caronas em
+agosto de 2026, R$ 360,00 no mês*. The weekly schedule is the engine of the
+whole product and the bill is what it produces, so the form shows the bill
+while it is being filled in rather than at the end of the month. It runs the
+same `report()` the ledger runs, so holidays and days the driver called off are
+already out of the count.
+
+Three things it deliberately does not do: no "seg a sex" shortcut, because a
+new person already opens with Monday to Friday selected and the shortcut would
+save nobody a tap; no `+R$1 / +R$5` steppers, because a fare is set once and
+`type="number"` already steps; no drag-to-dismiss, because that needs a pointer
+handler and a velocity threshold to feel right and the backdrop already closes
+it.
+
+Selected weekdays are ink, not red. Five red chips on an empty form made a new
+person look like a problem, and red is spent on absences, today, and money.
+
 ## Rules that are checked, not felt
 
 - 390px is the design target. Verify at that width. Chrome's headless mode

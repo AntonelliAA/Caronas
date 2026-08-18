@@ -102,17 +102,45 @@ import Wheel from '../components/Wheel.astro';
     </div>
   </main>
 
-  <dialog id="editor">
+  <dialog id="editor" aria-labelledby="editor-titulo">
     <form method="dialog" id="editor-form">
-      <h2 id="editor-titulo">Pessoa</h2>
-      <label class="field"><span>Nome</span><input type="text" id="f-nome" required maxlength="40" /></label>
+      <!-- Focus lands here on open, not on the first field. showModal() would
+           otherwise put the caret in Nome, which wears the accent ring on an
+           untouched form and throws the phone keyboard over the projection.
+           A screen reader gets the sheet's title read out instead. -->
+      <h2 id="editor-titulo" tabindex="-1">Pessoa</h2>
+
+      <label class="field"><span>Nome</span>
+        <input type="text" id="f-nome" required maxlength="40" autocomplete="off" enterkeyhint="done" />
+      </label>
+
       <div class="field">
-        <span>Dias em que vai</span>
-        <div class="weekpick" id="f-dias"></div>
+        <span id="f-dias-rot">Dias da semana</span>
+        <div class="weekpick" id="f-dias" role="group" aria-labelledby="f-dias-rot"></div>
+        <span class="hint">A carona entra sozinha nesses dias. A pessoa só marca quando não for.</span>
       </div>
-      <label class="field"><span>Valor por dia (R$)</span><input type="number" id="f-valor" min="0" step="0.01" required /></label>
-      <label class="field"><span>Começou em</span><input type="date" id="f-inicio" required /></label>
-      <label class="field"><span>Parou em (deixe vazio se ainda anda)</span><input type="date" id="f-fim" /></label>
+
+      <label class="field"><span>Valor por dia</span>
+        <span class="money"><span aria-hidden="true">R$</span><input type="number" id="f-valor" min="0" step="0.01" required inputmode="decimal" placeholder="0,00" /></span>
+      </label>
+
+      <label class="field"><span>Primeiro dia</span>
+        <input type="date" id="f-inicio" required />
+        <span class="hint">Nada antes dessa data entra na conta.</span>
+      </label>
+
+      <!-- Only on an existing person: nobody stops riding before they start. -->
+      <label class="field" id="f-fim-campo" hidden><span>Último dia</span>
+        <input type="date" id="f-fim" />
+        <span class="hint">Deixe vazio enquanto a pessoa ainda anda.</span>
+      </label>
+
+      <p id="f-resumo" class="editor__resumo"></p>
+
+      <!-- Inside the dialog on purpose: a modal sits in the top layer, so the
+           page-level error bar renders behind it and is never seen. -->
+      <p id="f-erro" class="editor__erro" role="alert" hidden></p>
+
       <div class="editor__acoes">
         <button class="btn btn--ghost" value="cancel" type="submit" formnovalidate>Cancelar</button>
         <button class="btn btn--primary" value="ok" type="submit">Salvar</button>
@@ -599,7 +627,11 @@ import Wheel from '../components/Wheel.astro';
     .sk { animation: none; }
   }
 
-  /* --- Editor dialog --- */
+  /* --- Editor dialog ---
+     A drawer on a phone and a centred card on a desk. The form is the only
+     place in the app where somebody types, and it is reached with one thumb
+     while the car is parked, so on 390px it rises from the bottom edge where
+     the thumb already is. */
   dialog {
     width: min(460px, calc(100vw - 2rem));
     /* A modal dialog is centred by the UA stylesheet's `margin: auto`, and the
@@ -612,15 +644,106 @@ import Wheel from '../components/Wheel.astro';
     border-radius: var(--radius-md);
     background: var(--bg-primary);
     color: var(--text-primary);
+    opacity: 0;
+    translate: 0 8px;
+    /* allow-discrete keeps the element painted through the closing animation;
+       without it display:none lands on frame one and nothing is seen. */
+    transition: opacity 220ms ease, translate 260ms cubic-bezier(0.16, 1, 0.3, 1),
+      overlay 260ms allow-discrete, display 260ms allow-discrete;
+  }
+
+  dialog[open] {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  @starting-style {
+    dialog[open] {
+      opacity: 0;
+      translate: 0 8px;
+    }
   }
 
   dialog::backdrop {
+    background: rgba(0, 0, 0, 0);
+    transition: background 220ms ease, overlay 220ms allow-discrete,
+      display 220ms allow-discrete;
+  }
+
+  dialog[open]::backdrop {
     background: rgba(0, 0, 0, 0.45);
   }
 
+  @starting-style {
+    dialog[open]::backdrop {
+      background: rgba(0, 0, 0, 0);
+    }
+  }
+
+  @media (max-width: 719px) {
+    dialog {
+      width: 100%;
+      max-width: none;
+      max-height: 92dvh;
+      overflow-y: auto;
+      /* auto on three sides, 0 at the bottom: the sheet sits on the edge. */
+      margin: auto auto 0;
+      border-bottom: none;
+      border-radius: 18px 18px 0 0;
+      padding-bottom: calc(1.25rem + env(safe-area-inset-bottom));
+      translate: 0 100%;
+    }
+
+    @starting-style {
+      dialog[open] {
+        translate: 0 100%;
+      }
+    }
+
+    /* The grabber says "this came from the bottom and goes back there". It is
+       drawn, not dragged: dragging a sheet needs a pointer handler and a
+       velocity threshold to feel right, and the backdrop already closes it. */
+    dialog::before {
+      content: '';
+      display: block;
+      width: 36px;
+      height: 4px;
+      margin: -0.4rem auto 0.9rem;
+      border-radius: var(--radius-full);
+      background: var(--border-hover);
+    }
+  }
+
   dialog h2 {
-    font-size: 1.1rem;
-    margin-bottom: 1rem;
+    margin-bottom: 1.25rem;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  /* What the schedule above adds up to, in the only unit that matters here.
+     It is the reason the weekday row exists, so it sits directly under it. */
+  .editor__resumo {
+    margin-top: 1.25rem;
+    padding: 0.7rem 0.85rem;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    background: var(--bg-card);
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .editor__resumo strong {
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+
+  .editor__erro {
+    margin-top: 0.85rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--accent);
   }
 
   .editor__acoes {
@@ -636,10 +759,20 @@ import Wheel from '../components/Wheel.astro';
   .apagar {
     display: block;
     width: 100%;
-    margin-top: 1rem;
+    min-height: var(--tap);
+    margin-top: 0.75rem;
     padding: 0.5rem;
+    border-radius: var(--radius-sm);
     font-size: 0.8rem;
     color: var(--accent);
+  }
+
+  /* Second press confirms. A native confirm() over a modal shows the origin
+     hostname and drops the person out of the app to answer a browser
+     question; the answer belongs in the sheet that asked. */
+  .apagar[data-confirmar='1'] {
+    background: var(--accent-soft);
+    font-weight: 600;
   }
 </style>
 
@@ -1091,34 +1224,103 @@ import Wheel from '../components/Wheel.astro';
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = nome;
+      b.dataset.fds = d === 0 || d === 6 ? '1' : '0';
       b.setAttribute('aria-pressed', String(diasSel.has(d)));
       b.onclick = () => {
         diasSel.has(d) ? diasSel.delete(d) : diasSel.add(d);
         b.setAttribute('aria-pressed', String(diasSel.has(d)));
+        resumoEditor();
       };
       box.append(b);
     });
   }
 
+  /**
+   * What the days above are worth. The schedule is the only thing anybody
+   * fills in here and the bill is what it produces, so the form shows the
+   * bill while it is being typed instead of at the end of the month.
+   */
+  function resumoEditor() {
+    // Any edit clears the last complaint: the form re-answers it by changing.
+    erroEditor(null);
+    const el = $('f-resumo');
+    // Nothing to project, and saying "pick some days" here would repeat the
+    // alert that Salvar raises in the same corner of the sheet.
+    el.hidden = diasSel.size === 0;
+    if (el.hidden) return;
+    const ano = cursor.getFullYear();
+    const m0 = cursor.getMonth();
+    const previa = {
+      id: 'previa',
+      name: '',
+      weekdays: [...diasSel],
+      fare: Number(($('f-valor') as HTMLInputElement).value) || 0,
+      start_date: ($('f-inicio') as HTMLInputElement).value || hoje,
+      end_date: ($('f-fim') as HTMLInputElement).value || null,
+    };
+    // `mes` is undefined when the month failed to load: carregar() still shows
+    // the app so the roster stays reachable. Without this guard the projection
+    // throws inside abrirEditor and the sheet never opens at all — the one
+    // screen you need when the month is broken is the one that edits it.
+    const r = report(
+      previa,
+      monthDays(ano, m0),
+      new Map(),
+      mes?.overrides ?? new Map(),
+      feriados(ano),
+      hoje,
+    );
+    // Holidays and the days the driver called off are already out of this
+    // count, which is the whole reason it is worth showing.
+    el.innerHTML = `<strong>${r.planned} caronas</strong> em ${esc(monthLabel(ano, m0))}${
+      previa.fare > 0 ? `, <strong>${brl(r.plannedTotal)}</strong> no mês` : ''
+    }. Feriados e dias sem carona já estão fora.`;
+  }
+
+  function erroEditor(msg: string | null) {
+    const el = $('f-erro');
+    el.textContent = msg ?? '';
+    el.hidden = !msg;
+  }
+
   function abrirEditor(p: PassengerRow | null) {
     editando = p;
     diasSel = new Set(p?.weekdays ?? [1, 2, 3, 4, 5]);
-    $('editor-titulo').textContent = p ? p.name : 'Nova pessoa';
+    $('editor-titulo').textContent = p ? `Editar ${p.name.split(' ')[0]}` : 'Nova pessoa';
     ($('f-nome') as HTMLInputElement).value = p?.name ?? '';
     ($('f-valor') as HTMLInputElement).value = String(p?.fare ?? '');
     ($('f-inicio') as HTMLInputElement).value = p?.start_date ?? hoje;
     ($('f-fim') as HTMLInputElement).value = p?.end_date ?? '';
+    // Nobody stops riding before they start, so the field only exists on
+    // somebody who already does.
+    $('f-fim-campo').hidden = !p;
     $('f-apagar').hidden = !p;
+    delete $('f-apagar').dataset.confirmar;
+    $('f-apagar').textContent = 'Remover do grupo';
+    erroEditor(null);
     montarWeekpick();
+    resumoEditor();
     ($('editor') as HTMLDialogElement).showModal();
+    $('editor-titulo').focus();
   }
+
+  for (const id of ['f-valor', 'f-inicio', 'f-fim']) {
+    $(id).addEventListener('input', resumoEditor);
+  }
+
+  // Clicking the backdrop closes the sheet. The dialog fills its own box, so a
+  // click landing on the element itself landed outside the form.
+  $('editor').addEventListener('click', (ev) => {
+    if (ev.target === $('editor')) ($('editor') as HTMLDialogElement).close();
+  });
 
   $('editor-form').addEventListener('submit', (ev) => {
     const acao = (ev as SubmitEvent).submitter as HTMLButtonElement | null;
     if (acao?.value !== 'ok') return;
     if (diasSel.size === 0) {
       ev.preventDefault();
-      erro('Escolha pelo menos um dia da semana.');
+      erroEditor('Escolha pelo menos um dia da semana.');
+      $('f-dias').querySelector('button')?.focus();
       return;
     }
     const dados = {
@@ -1132,9 +1334,17 @@ import Wheel from '../components/Wheel.astro';
     commit(() => savePassenger(dados as any));
   });
 
+  // Two presses, both inside the sheet. Removing somebody takes their absences
+  // and their payments with them, so it asks; it asks here rather than through
+  // confirm(), which on a phone is a browser dialog naming the hostname.
   $('f-apagar').addEventListener('click', () => {
+    const b = $('f-apagar');
     if (!editando) return;
-    if (!confirm(`Remover ${editando.name}? As faltas e os pagamentos dessa pessoa vão junto.`)) return;
+    if (b.dataset.confirmar !== '1') {
+      b.dataset.confirmar = '1';
+      b.textContent = 'Remover mesmo? As faltas e os pagamentos vão junto.';
+      return;
+    }
     const id = editando.id;
     ($('editor') as HTMLDialogElement).close();
     commit(() => removePassenger(id));
