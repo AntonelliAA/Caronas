@@ -61,8 +61,11 @@ holiday the app does not know) and a public holiday where the ride happened
 anyway. A separate "no ride days" table would have needed a second one for the
 opposite case.
 
-**`payments`**: `(passenger_id, month)` where month is `'YYYY-MM'`. The row
-existing means paid. Deleting it means not paid.
+**`payments`**: a ledger, not a flag. Each row is one amount the driver
+actually received, at `paid_at`, for a `(passenger_id, month)`; a person can
+have several in the same month. Whether they are settled is derived by
+summing the rows for the month (`paidSoFar`) and comparing to what `report()`
+says they owe — there is no separate paid/unpaid column to fall out of sync.
 
 ## How a day is counted
 

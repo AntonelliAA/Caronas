@@ -55,13 +55,19 @@ create table if not exists day_overrides (
   created_at timestamptz not null default now()
 );
 
+-- A ledger, not a flag: a passenger can hand over money in parts over the
+-- month, so the primary key is a plain id and (passenger_id, month) can
+-- repeat. "Paid" is derived by summing these rows against what report()
+-- says they owe, in src/lib/rides.ts's paidSoFar.
 create table if not exists payments (
+  id           uuid primary key default gen_random_uuid(),
   passenger_id uuid not null references passengers (id) on delete cascade,
   month        text not null check (month ~ '^\d{4}-\d{2}$'),
-  amount       numeric(10, 2),
-  paid_at      timestamptz not null default now(),
-  primary key (passenger_id, month)
+  amount       numeric(10, 2) not null,
+  paid_at      timestamptz not null default now()
 );
+
+create index if not exists payments_passenger_month_idx on payments (passenger_id, month);
 
 -- -------------------------------------------------------------------- rls ---
 -- Every table in the public schema gets RLS. A table without it is readable and
@@ -234,3 +240,17 @@ order by tablename, policyname;
 -- update passengers set token = encode(gen_random_bytes(8), 'hex');
 --
 -- and resend every personal link from the driver screen.
+
+-- -------------------------------------------------------------- migration ---
+-- Only if payments already exists with the old shape: one row per
+-- (passenger_id, month), paid meaning the row exists. This gives it an id so
+-- a month can hold more than one partial payment, then re-run the whole
+-- policy section above, which is safe on its own.
+--
+-- alter table payments add column if not exists id uuid default gen_random_uuid();
+-- update payments set id = gen_random_uuid() where id is null;
+-- alter table payments alter column id set not null;
+-- alter table payments drop constraint if exists payments_pkey;
+-- alter table payments add primary key (id);
+-- create index if not exists payments_passenger_month_idx on payments (passenger_id, month);
+-- alter table payments alter column amount set not null;
