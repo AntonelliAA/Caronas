@@ -92,6 +92,13 @@ code had caught none of them. It is worth the four commands.
 - **The `hidden` attribute.** Any class with a `display` value beats the
   browser's `display: none` for `[hidden]`. `global.css` forces it with
   `!important`; do not remove that rule.
+- **The `* { margin: 0 }` reset versus `<dialog>`.** A modal dialog is centred
+  by the UA stylesheet's `margin: auto`, and the reset at the top of
+  `global.css` wipes it, pinning the sheet to the top-left corner. It looks
+  like a positioning bug and it is a specificity one. `dialog` restates
+  `margin: auto`; do not remove it. This shipped unnoticed for a while because
+  the screenshot check was only ever run at 390px, where the sheet is
+  bottom-anchored and the bug does not show.
 - **New tables without RLS.** Postgres does not warn. Supabase's Security
   Advisor does.
 - **Fetch windows.** A screen that shows both "this month" and "today" needs a

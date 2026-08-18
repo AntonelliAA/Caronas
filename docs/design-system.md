@@ -70,6 +70,10 @@ twenty rows.
 - 390px is the design target. Verify at that width. Chrome's headless mode
   clamps the viewport to roughly 500px, so screenshot inside an iframe sized to
   390px or the check proves nothing.
+- Anything with a layout that changes at 720px gets shot at both widths. The
+  dialog sat pinned to the top-left corner on every wide screen for as long as
+  the check only ever ran at 390px, where it is anchored to the bottom edge and
+  looks right.
 - Tap targets are at least 44px. `--tap` exists for this.
 - Every interactive element has an accessible name. Icon-only buttons need
   `aria-label`; toggles need `aria-pressed`.

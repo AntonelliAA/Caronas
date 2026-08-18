@@ -619,6 +619,11 @@ import Wheel from '../components/Wheel.astro';
   /* --- Editor dialog --- */
   dialog {
     width: min(460px, calc(100vw - 2rem));
+    /* A modal dialog is centred by the UA stylesheet's `margin: auto`, and the
+       `* { margin: 0 }` reset at the top of global.css wipes it out, which
+       pinned the sheet to the top-left corner. Saying it again here is the
+       whole fix; the reset stays because everything else wants it. */
+    margin: auto;
     padding: 1.25rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
