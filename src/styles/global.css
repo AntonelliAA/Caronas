@@ -107,6 +107,9 @@ ul {
   --tap: 44px;
 
   --transition-fast: 150ms ease;
+  /* Slight overshoot. A mark landing on the sheet should feel like a stamp,
+     not like a fade, and the whole distance is 4px. */
+  --ease-out-back: cubic-bezier(0.34, 1.4, 0.64, 1);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -259,11 +262,15 @@ ul {
   border: 1px solid transparent;
   font-size: 0.95rem;
   font-weight: 600;
-  transition: opacity var(--transition-fast), border-color var(--transition-fast);
+  transition: opacity var(--transition-fast), border-color var(--transition-fast),
+    scale var(--transition-fast);
 }
 
+/* A thumb covers the button it is pressing, so the only press feedback that
+   survives is the edge moving. */
 .btn:active {
   opacity: 0.75;
+  scale: 0.98;
 }
 
 .btn--primary {
@@ -468,6 +475,71 @@ input:focus-visible {
   font-weight: 700;
 }
 
+.weekpick button:active {
+  scale: 0.94;
+}
+
+/* --- Motion ---
+   Every write here is a round trip to Supabase, and until it came back the
+   screen said nothing at all. Two states cover it: the control that was tapped
+   steps back while the request is in flight, and the mark that replaces it
+   lands. Nothing animates that is not reporting something. */
+.pendente {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.marca-nova {
+  animation: marca-entra 260ms var(--ease-out-back) both;
+}
+
+@keyframes marca-entra {
+  from {
+    scale: 0.3;
+    opacity: 0;
+  }
+}
+
+/* Months are a line you walk along, so the name of the month travels in the
+   direction of the arrow that was pressed while the numbers under it dissolve.
+   Nothing else on the page is named, so nothing else moves sideways. */
+::view-transition-old(mes),
+::view-transition-new(mes) {
+  animation-duration: 260ms;
+}
+
+html[data-mes='prox']::view-transition-old(mes) {
+  animation-name: mes-sai-esq;
+}
+
+html[data-mes='prox']::view-transition-new(mes) {
+  animation-name: mes-entra-dir;
+}
+
+html[data-mes='ant']::view-transition-old(mes) {
+  animation-name: mes-sai-dir;
+}
+
+html[data-mes='ant']::view-transition-new(mes) {
+  animation-name: mes-entra-esq;
+}
+
+@keyframes mes-sai-esq {
+  to { translate: -35% 0; opacity: 0; }
+}
+
+@keyframes mes-entra-dir {
+  from { translate: 35% 0; opacity: 0; }
+}
+
+@keyframes mes-sai-dir {
+  to { translate: 35% 0; opacity: 0; }
+}
+
+@keyframes mes-entra-esq {
+  from { translate: -35% 0; opacity: 0; }
+}
+
 /* --- Accessibility --- */
 :focus-visible {
   outline: 2px solid var(--accent);
@@ -499,6 +571,14 @@ input:focus-visible {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* The universal selector does not reach view transition pseudo-elements, so
+     the cross-fade and the month slide need saying again. */
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.01ms !important;
   }
 }
 

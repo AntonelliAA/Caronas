@@ -139,6 +139,7 @@ import Wheel from '../components/Wheel.astro';
     font-size: 1rem;
     font-weight: 600;
     text-transform: lowercase;
+    view-transition-name: mes;
   }
 
   .resumo {
@@ -358,12 +359,18 @@ import Wheel from '../components/Wheel.astro';
     if (el) el.textContent = msg;
   }
 
-  async function commit(fn: () => Promise<void>) {
+  const semMovimento = matchMedia('(prefers-reduced-motion: reduce)');
+
+  /** `alvo` steps back while the write is in flight. Same reason as the driver
+   *  screen: marking an absence from a phone with one bar showed nothing. */
+  async function commit(fn: () => Promise<void>, alvo?: HTMLElement) {
+    alvo?.classList.add('pendente');
     try {
       await fn();
       await carregar();
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+      alvo?.classList.remove('pendente');
     }
   }
 
@@ -390,11 +397,26 @@ import Wheel from '../components/Wheel.astro';
     const ate = dias[dias.length - 1] > addDays(hoje, 1) ? dias[dias.length - 1] : addDays(hoje, 1);
     try {
       mes = await loadMonth(de, ate, monthKey(ano, m0));
-      render();
+      pintar();
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para carregar o mês.');
     }
   }
+
+  /** Set by the month arrows, and only by them. */
+  let direcaoMes: 'ant' | 'prox' | null = null;
+
+  /** The month name slides in the direction of the arrow; marking an absence
+   *  repaints in place. Same rule as the driver screen. */
+  function pintar() {
+    const dir = direcaoMes;
+    direcaoMes = null;
+    if (!dir || semMovimento.matches || !document.startViewTransition) return render();
+    document.documentElement.dataset.mes = dir;
+    document.startViewTransition(() => render());
+  }
+
+  let valorAnterior = '';
 
   function render() {
     const ano = cursor.getFullYear();
@@ -410,8 +432,19 @@ import Wheel from '../components/Wheel.astro';
 
     renderAcoes();
 
+    // The number a passenger came here to check. When their own tap changes
+    // it, the change is the message, so the figure moves rather than swapping.
     const r = report(eu, dias, marcas(), mes.overrides, fer, hoje);
-    $('resumo-valor').textContent = brl(r.total);
+    const valor = brl(r.total);
+    const elValor = $('resumo-valor');
+    if (valorAnterior && valorAnterior !== valor && !semMovimento.matches) {
+      elValor.animate(
+        [{ opacity: 0.3, translate: '0 -6px' }, { opacity: 1, translate: '0 0' }],
+        { duration: 320, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+      );
+    }
+    valorAnterior = valor;
+    elValor.textContent = valor;
 
     const pago = mes.paid.has(eu.id);
     const statusEl = $('resumo-status');
@@ -471,11 +504,13 @@ import Wheel from '../components/Wheel.astro';
         marcada ? `Desfazer falta de ${quando}` : `Marcar falta de ${quando}`,
       );
       b.textContent = marcada ? `Voltei atrás, vou ${quando}` : `Não vou ${quando}`;
-      b.onclick = () =>
+      b.onclick = () => {
+        ultimoDia = dia;
         commit(async () => {
           await setMark(eu.id, dia, marcada ? null : false);
           anunciar(marcada ? `Falta de ${quando} desfeita.` : `Falta de ${quando} registrada.`);
-        });
+        }, b);
+      };
       el.append(b);
     });
 
@@ -487,6 +522,9 @@ import Wheel from '../components/Wheel.astro';
       : 'Nas caronas agendadas, a presença entra sozinha.';
     el.append(nota);
   }
+
+  /** The day whose mark was changed last, so only that one animates in. */
+  let ultimoDia: string | null = null;
 
   function renderDias(dias: string[], fer: Map<string, string>) {
     const el = $('dias');
@@ -539,22 +577,28 @@ import Wheel from '../components/Wheel.astro';
             <span class="dia__data">${rotulo(dia)}</span>
             <span class="dia__estado">${marca} ${texto}</span>
           </div>`;
-        b.onclick = () =>
+        if (ultimoDia === dia) b.querySelector('.mark')?.classList.add('marca-nova');
+        b.onclick = () => {
+          ultimoDia = dia;
           commit(async () => {
             await setMark(eu.id, dia, falta ? null : false);
             anunciar(falta ? `Falta de ${rotulo(dia)} desfeita.` : `Falta de ${rotulo(dia)} registrada.`);
-          });
+          }, b);
+        };
         li.append(b);
       }
       el.append(li);
     }
+    ultimoDia = null;
   }
 
   $('mes-ant').onclick = () => {
+    direcaoMes = 'ant';
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
     carregar();
   };
   $('mes-prox').onclick = () => {
+    direcaoMes = 'prox';
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     carregar();
   };

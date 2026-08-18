@@ -65,6 +65,36 @@ question being asked is "who rode when", which reads down a column. Days where
 nobody is scheduled are dropped, so weekends disappear and August fits in about
 twenty rows.
 
+## Motion
+
+Every write is a round trip to Supabase, and for a while the screen said
+nothing at all between the tap and the answer. Motion here reports state; it
+does not decorate. Four things move, and nothing else does.
+
+| What | Where | Why |
+|---|---|---|
+| The tapped control steps back to 40% | `.pendente`, added by `commit()` | The request is in flight. Removed only on failure, because success rebuilds the element. |
+| The new mark lands, 260ms with a slight overshoot | `.marca-nova` | Only on the one cell that was just changed, tracked by `passengerId:day`. A blanket entrance would replay the whole month on every tap. |
+| The month name slides, the rest cross-fades | View Transitions API | Months are a line you walk along, so the name travels in the direction of the arrow. It is the only region with a `view-transition-name`. |
+| The total lifts 6px as it changes | `Element.animate()` in `renderTotal` | A mark two screens down changes this number and the connection was invisible. Same figure moving, not a new one arriving. |
+
+The transition is started **after** the fetch resolves, never around it.
+Wrapping `carregar()` would hold a snapshot of the old month on screen for as
+long as the network takes and call it an animation.
+
+`prefers-reduced-motion` is honored in three places, because one is not enough:
+the global rule for CSS animations, an explicit rule for the view transition
+pseudo-elements (the universal selector does not reach them), and a
+`matchMedia` check before every `Element.animate()` call.
+
+Everything is the platform: `@starting-style` and `transition-behavior:
+allow-discrete` for the dialog, `document.startViewTransition` for the month,
+`Element.animate` for the total. No animation library. Motion One, GSAP and
+`@formkit/auto-animate` were all considered and rejected — the first two
+duplicate `transition`, and auto-animate keys on element identity across
+renders, while `render()` rebuilds every child from scratch, so it would
+animate the entire page on every tap.
+
 ## The person sheet
 
 The editor is a bottom sheet under 720px and a centred card above it. It is the
@@ -119,3 +149,16 @@ alternative.
 Current state: none present. Section labels are lowercase mono. The one drawn
 object in the whole app is the steering wheel in `Wheel.astro`. Everything else
 is type and hairlines.
+
+Re-audited when motion was added. The list holds, and two candidates were
+turned down on the way in: confetti when a month is marked paid, which is
+celebration the moment does not carry and a third dependency for one animation,
+and swapping the hand-drawn SVGs for an icon package. The icons already follow
+Lucide's geometry — 24×24, `stroke-width: 2`, round caps — which is why they
+look like a set; installing the package would render the same paths from
+`node_modules`.
+
+The failure mode for a tool like this one is not decoration, it is the opposite:
+so little feedback that a tap on a network-backed control looks like a tap that
+missed. That is what the motion pass was for, and it is why every moving thing
+above is tied to a state change rather than to a page load.

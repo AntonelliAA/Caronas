@@ -196,6 +196,8 @@ import Wheel from '../components/Wheel.astro';
     font-weight: 600;
     letter-spacing: -0.01em;
     text-transform: lowercase;
+    /* The one named region: it travels sideways while the rest cross-fades. */
+    view-transition-name: mes;
   }
 
   /* --- Today --- */
@@ -824,6 +826,8 @@ import Wheel from '../components/Wheel.astro';
 
   const marksOf = (id: string) => mes.marks.get(id) ?? new Map<string, boolean>();
 
+  const semMovimento = matchMedia('(prefers-reduced-motion: reduce)');
+
   function aviso(msg: string, ok = false) {
     const el = $('erro');
     el.textContent = msg;
@@ -834,13 +838,20 @@ import Wheel from '../components/Wheel.astro';
 
   const erro = (msg: string) => aviso(msg);
 
-  /** Every write goes through here, so a failure is never silent. */
-  async function commit(fn: () => Promise<void>) {
+  /**
+   * Every write goes through here, so a failure is never silent. `alvo` is the
+   * control that was tapped: it steps back for as long as the request is in
+   * flight, which on a phone in a parking garage is the difference between a
+   * tap that landed and a tap that did nothing.
+   */
+  async function commit(fn: () => Promise<void>, alvo?: HTMLElement) {
+    alvo?.classList.add('pendente');
     try {
       await fn();
       await carregar();
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+      alvo?.classList.remove('pendente');
     }
   }
 
@@ -858,7 +869,7 @@ import Wheel from '../components/Wheel.astro';
     try {
       pessoas = await loadPassengers();
       mes = await loadMonth(de, ate, monthKey(ano, m0));
-      render();
+      pintar();
       mostrar('app');
       primeiraCarga = false;
     } catch (e: any) {
@@ -869,6 +880,23 @@ import Wheel from '../components/Wheel.astro';
   }
 
   // ---------------------------------------------------------------- render ---
+
+  /** Set by the month arrows, and only by them. */
+  let direcaoMes: 'ant' | 'prox' | null = null;
+
+  /**
+   * The fetch has already landed by the time this runs, so the snapshot the
+   * view transition holds is never a frozen screen waiting on the network.
+   * A month change slides; a single mark toggling repaints in place, because
+   * cross-fading the whole page on every tap of a dot reads as lag.
+   */
+  function pintar() {
+    const dir = direcaoMes;
+    direcaoMes = null;
+    if (!dir || semMovimento.matches || !document.startViewTransition) return render();
+    document.documentElement.dataset.mes = dir;
+    document.startViewTransition(() => render());
+  }
 
   function render() {
     const ano = cursor.getFullYear();
@@ -947,10 +975,15 @@ import Wheel from '../components/Wheel.astro';
         'aria-label',
         faltou ? `${p.name} faltou hoje. Desfazer.` : `Marcar falta de ${p.name} hoje`,
       );
-      b.onclick = () => commit(() => setMark(p.id, hoje, faltou ? null : false));
+      b.onclick = () => {
+        ultimaMarca = `${p.id}:${hoje}`;
+        commit(() => setMark(p.id, hoje, faltou ? null : false), b);
+      };
       el.append(b);
     }
   }
+
+  let totalAnterior = '';
 
   function renderTotal(relatos: ReturnType<typeof report>[]) {
     const feito = relatos.reduce((s, r) => s + r.total, 0);
@@ -958,7 +991,19 @@ import Wheel from '../components/Wheel.astro';
     const caronas = relatos.reduce((s, r) => s + r.done, 0);
     const faltas = relatos.reduce((s, r) => s + r.faltas, 0);
 
-    $('total-valor').textContent = brl(feito);
+    // A mark two screens down changes this number, and the connection between
+    // the two is invisible if it just swaps. It is the same figure moving, so
+    // it lifts rather than fades: a new value would arrive, this one changed.
+    const valor = brl(feito);
+    const el = $('total-valor');
+    if (totalAnterior && totalAnterior !== valor && !semMovimento.matches) {
+      el.animate(
+        [{ opacity: 0.3, translate: '0 -6px' }, { opacity: 1, translate: '0 0' }],
+        { duration: 320, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+      );
+    }
+    totalAnterior = valor;
+    el.textContent = valor;
     const partes = [`${caronas} ${caronas === 1 ? 'carona' : 'caronas'}`];
     if (faltas) partes.push(`${faltas} ${faltas === 1 ? 'falta' : 'faltas'}`);
     if (previsto > feito) partes.push(`${brl(previsto)} se o mês fechar como está`);
@@ -1019,7 +1064,7 @@ import Wheel from '../components/Wheel.astro';
       bPago.innerHTML =
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>' +
         (pago ? 'Pago' : 'Marcar pago');
-      bPago.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total));
+      bPago.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total), bPago);
 
       const bLink = document.createElement('button');
       bLink.type = 'button';
@@ -1046,6 +1091,9 @@ import Wheel from '../components/Wheel.astro';
   /** Inside their period, so a one-off ride can be added even off-schedule. */
   const podeEntrar = (p: PassengerRow, dia: string) =>
     dia >= p.start_date && (!p.end_date || dia <= p.end_date);
+
+  /** `passengerId:day` of the cell tapped last, so only its mark animates in. */
+  let ultimaMarca: string | null = null;
 
   function renderFolha(dias: string[], fer: Map<string, string>) {
     const head = $('folha-head');
@@ -1105,8 +1153,9 @@ import Wheel from '../components/Wheel.astro';
       // One tap cycles the day: normal → no ride → normal. On a holiday the
       // cycle inverts, because there the default is already "no ride".
       diaBtn.onclick = () =>
-        commit(() =>
-          setOverride(dia, forcado === undefined ? !rodou : null, fer.get(dia)),
+        commit(
+          () => setOverride(dia, forcado === undefined ? !rodou : null, fer.get(dia)),
+          diaBtn,
         );
       th.append(diaBtn);
       tr.append(th);
@@ -1154,12 +1203,19 @@ import Wheel from '../components/Wheel.astro';
         b.dataset.estado = estado;
         b.setAttribute('aria-label', `${p.name}, ${falado}: ${rotulos[estado]}`);
         b.innerHTML = marcas[estado];
-        b.onclick = () => commit(() => setMark(p.id, dia, nextMark(estado)));
+        // The cell that was just tapped is rebuilt from scratch by the reload,
+        // so the new mark lands instead of appearing. Only that one cell.
+        if (ultimaMarca === `${p.id}:${dia}`) b.firstElementChild?.classList.add('marca-nova');
+        b.onclick = () => {
+          ultimaMarca = `${p.id}:${dia}`;
+          commit(() => setMark(p.id, dia, nextMark(estado)), b);
+        };
         td.append(b);
         tr.append(td);
       });
       body.append(tr);
     }
+    ultimaMarca = null;
   }
 
   // ----------------------------------------------------------------- share ---
@@ -1363,10 +1419,12 @@ import Wheel from '../components/Wheel.astro';
   }
 
   $('mes-ant').onclick = () => {
+    direcaoMes = 'ant';
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1);
     carregar();
   };
   $('mes-prox').onclick = () => {
+    direcaoMes = 'prox';
     cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
     carregar();
   };
