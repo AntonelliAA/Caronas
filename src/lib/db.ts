@@ -58,7 +58,15 @@ export async function loadMonth(from: string, to: string, month: string) {
   return {
     marks: byPassenger,
     overrides: new Map((overrides.data ?? []).map((o) => [o.day, o.has_ride] as const)),
-    overrideNotes: new Map((overrides.data ?? []).map((o) => [o.day, o.note ?? ''] as const)),
+    // Only days that actually carry a note. Mapping a missing one to '' put an
+    // empty string in the map, and an empty string is not nullish, so every
+    // `overrideNotes.get(day) ?? 'sem carona'` in the pages fell through to a
+    // blank label instead of the fallback.
+    overrideNotes: new Map(
+      (overrides.data ?? [])
+        .filter((o) => o.note)
+        .map((o) => [o.day, o.note as string] as const),
+    ),
     paid: new Set((payments.data ?? []).map((p) => p.passenger_id)),
   };
 }
