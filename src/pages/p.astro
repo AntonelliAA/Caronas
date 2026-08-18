@@ -31,11 +31,10 @@ import Wheel from '../components/Wheel.astro';
         <p id="escala" class="escala muted"></p>
       </section>
 
-      <section class="secao-acoes">
-        <span class="label">ações rápidas</span>
-        <div id="acoes" class="acoes"></div>
-      </section>
+      <!-- Hero Card: Próxima Carona com Ação Imediata -->
+      <section id="hero-carona" class="hero-card card"></section>
 
+      <!-- Resumo de Caronas e Navegador de Mês -->
       <nav class="mesnav">
         <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg>
@@ -48,24 +47,40 @@ import Wheel from '../components/Wheel.astro';
 
       <section class="resumo card">
         <div class="resumo__topo">
-          <span class="label">acumulado até hoje</span>
+          <span class="label">a pagar até hoje</span>
           <span id="resumo-status" class="badge"></span>
         </div>
         <p id="resumo-valor" class="resumo__valor num">R$ 0,00</p>
         <p id="resumo-linha" class="muted resumo__linha"></p>
       </section>
 
-      <section class="secao-dias">
-        <span class="label">seus dias no mês</span>
-        <ul id="dias" class="dias"></ul>
+      <!-- Calendário Mensal (Dom a Sáb com dias futuros em amarelo) -->
+      <section class="secao-calendario">
+        <span class="label">calendário do mês</span>
+        <div class="calendario card">
+          <div class="cal-dias-semana" aria-hidden="true">
+            <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
+          </div>
+          <div id="cal-grade" class="cal-grade" role="grid" aria-label="Dias do mês"></div>
+          
+          <div id="cal-detalhe" class="cal-detalhe" hidden></div>
+
+          <div class="cal-legenda">
+            <span class="cal-legenda__item"><span class="cal-dot cal-dot--ride">✓</span> Realizada</span>
+            <span class="cal-legenda__item"><span class="cal-dot cal-dot--agendado">●</span> Agendada</span>
+            <span class="cal-legenda__item"><span class="cal-dot cal-dot--absent">✕</span> Falta</span>
+            <span class="cal-legenda__item"><span class="cal-dot cal-dot--noride">—</span> Sem carona</span>
+          </div>
+        </div>
       </section>
 
       <section class="ajuda card">
         <span class="label">como funciona</span>
         <ul class="ajuda__lista">
-          <li><strong>Caronas automáticas:</strong> As caronas entram sozinhas nos seus dias agendados (<span id="ajuda-escala"></span>).</li>
-          <li><strong>Marque apenas faltas:</strong> Você não precisa confirmar presença. Só toque no botão quando não for andar.</li>
-          <li><strong>Transparência:</strong> O motorista vê suas marcações assim que você faz, e o desconto já entra na conta do mês.</li>
+          <li><strong>Vaga confirmada:</strong> Sua presença já entra automaticamente em todos os seus dias agendados (<span id="ajuda-escala"></span>).</li>
+          <li><strong>Avise apenas faltas:</strong> Toque no botão acima ou no calendário para avisar quando não for.</li>
+          <li><strong>Prazo:</strong> Faltas devem ser informadas até o próprio dia da viagem.</li>
+          <li><strong>Transparência:</strong> O motorista vê suas marcações na hora e a lista do mês fica sempre atualizada.</li>
         </ul>
       </section>
     </div>
@@ -103,28 +118,102 @@ import Wheel from '../components/Wheel.astro';
     line-height: 1.45;
   }
 
-  .secao-acoes {
-    margin-bottom: 1.75rem;
+  /* --- Hero Card --- */
+  .hero-card {
+    padding: 1.25rem;
+    margin-bottom: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    border-radius: var(--radius-md);
+    transition: background var(--transition-fast), border-color var(--transition-fast);
   }
 
-  .acoes {
-    display: grid;
-    gap: 0.6rem;
+  .hero-card--active {
+    border-color: color-mix(in srgb, var(--success) 35%, var(--border));
+    background: color-mix(in srgb, var(--success) 4%, var(--bg-card));
   }
 
-  .acoes .btn[aria-pressed='true'] {
-    background: var(--accent-soft);
-    border-color: var(--accent);
+  .hero-card--absent {
+    border-color: color-mix(in srgb, var(--accent) 35%, var(--border));
+    background: color-mix(in srgb, var(--accent) 5%, var(--bg-card));
+  }
+
+  .hero-card__topo {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .hero-card__topo .label {
+    margin-bottom: 0;
+  }
+
+  .hero-card__corpo {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .hero-card__titulo {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text-primary);
+  }
+
+  .hero-card__sub {
+    font-size: 0.88rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+  }
+
+  .dot-pulse {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--success);
+    box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.4);
+    }
+    70% {
+      box-shadow: 0 0 0 6px rgba(34, 197, 94, 0);
+    }
+    100% {
+      box-shadow: 0 0 0 0 rgba(34, 197, 94, 0);
+    }
+  }
+
+  .btn--danger-soft {
+    background: color-mix(in srgb, var(--accent) 10%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 30%, transparent);
     color: var(--accent);
   }
 
-  .acoes__nota {
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    text-align: center;
-    margin-top: 0.25rem;
+  .btn--danger-soft:hover {
+    background: color-mix(in srgb, var(--accent) 18%, transparent);
+    border-color: var(--accent);
   }
 
+  .btn--success-soft {
+    background: color-mix(in srgb, var(--success) 10%, transparent);
+    border-color: color-mix(in srgb, var(--success) 30%, transparent);
+    color: var(--success);
+  }
+
+  .btn--success-soft:hover {
+    background: color-mix(in srgb, var(--success) 18%, transparent);
+    border-color: var(--success);
+  }
+
+  /* --- Resumo & Navegação --- */
   .mesnav {
     display: flex;
     align-items: center;
@@ -161,10 +250,10 @@ import Wheel from '../components/Wheel.astro';
   }
 
   .resumo__valor {
-    font-size: 2.75rem;
+    font-size: 2.25rem;
     font-weight: 700;
-    letter-spacing: -0.045em;
-    line-height: 1;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
     color: var(--text-primary);
     font-variant-numeric: tabular-nums;
   }
@@ -176,8 +265,8 @@ import Wheel from '../components/Wheel.astro';
   .badge {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.2rem 0.6rem;
+    gap: 0.35rem;
+    padding: 0.25rem 0.65rem;
     border-radius: var(--radius-full);
     font-size: 0.75rem;
     font-weight: 600;
@@ -190,118 +279,203 @@ import Wheel from '../components/Wheel.astro';
     border: 1px solid color-mix(in srgb, var(--success) 30%, transparent);
   }
 
+  .badge--danger {
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    color: var(--accent);
+    border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  }
+
   .badge--pending {
     background: var(--bg-card-hover);
     color: var(--text-secondary);
     border: 1px solid var(--border);
   }
 
-  .secao-dias {
-    margin-bottom: 2rem;
+  /* --- Calendário Mensal --- */
+  .secao-calendario {
+    margin-bottom: 1.75rem;
   }
 
-  .dias {
-    display: grid;
+  .calendario {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    overflow: hidden;
   }
 
-  .dias li {
+  .cal-dias-semana {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    padding-bottom: 0.35rem;
     border-bottom: 1px solid var(--border);
   }
 
-  .dias li:last-child {
-    border-bottom: none;
+  .cal-grade {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 4px;
   }
 
-  .dia {
+  .cal-celula {
+    position: relative;
+    min-height: 48px;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    width: 100%;
-    min-height: var(--tap);
-    padding: 0.6rem 0.85rem;
-    text-align: left;
-    background: var(--bg-primary);
-    transition: background var(--transition-fast);
-  }
-
-  .dia:hover {
-    background: var(--bg-card-hover);
-  }
-
-  .dia__info {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    min-width: 0;
-  }
-
-  .dia__data {
-    font-family: var(--font-mono);
-    font-size: 0.82rem;
-    color: var(--text-secondary);
-    font-variant-numeric: tabular-nums;
-    white-space: nowrap;
-  }
-
-  .dia__estado {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
+    justify-content: center;
+    border-radius: var(--radius-sm);
+    border: 1px solid transparent;
     font-size: 0.88rem;
     font-weight: 500;
+    color: var(--text-faint);
+    background: none;
+    transition: background var(--transition-fast), border-color var(--transition-fast),
+      scale var(--transition-fast);
   }
 
-  li.hoje-linha .dia {
-    box-shadow: inset 3px 0 0 var(--accent);
-    background: color-mix(in srgb, var(--accent) 5%, transparent);
+  .cal-celula--vazia {
+    pointer-events: none;
   }
 
-  li.hoje-linha .dia__data {
-    color: var(--accent);
+  .cal-celula__num {
+    font-variant-numeric: tabular-nums;
+    line-height: 1;
+  }
+
+  .cal-celula__status {
+    font-size: 0.65rem;
+    margin-top: 3px;
+    line-height: 1;
     font-weight: 700;
   }
 
-  .dia[data-estado='absent'] .dia__estado {
+  .cal-celula--fora {
+    color: var(--text-faint);
+    opacity: 0.4;
+  }
+
+  /* Dias já realizados (passados): Verde */
+  .cal-celula--ride {
+    color: var(--text-primary);
+    font-weight: 600;
+    background: color-mix(in srgb, var(--success) 12%, transparent);
+    border-color: color-mix(in srgb, var(--success) 28%, transparent);
+  }
+
+  .cal-celula--ride .cal-celula__status {
+    color: var(--success);
+  }
+
+  /* Dias agendados (futuros/hoje): Amarelo / Dourado */
+  .cal-celula--agendado {
+    color: var(--text-primary);
+    font-weight: 600;
+    background: color-mix(in srgb, var(--p2) 15%, transparent);
+    border-color: color-mix(in srgb, var(--p2) 38%, transparent);
+  }
+
+  .cal-celula--agendado .cal-celula__status {
+    color: var(--p2);
+  }
+
+  /* Faltas: Vermelho */
+  .cal-celula--absent {
     color: var(--accent);
     font-weight: 600;
+    background: color-mix(in srgb, var(--accent) 12%, transparent);
+    border-color: color-mix(in srgb, var(--accent) 28%, transparent);
   }
 
-  .dia[data-estado='noride'] .dia__estado {
-    color: var(--text-secondary);
-  }
-
-  .dia[data-estado='ride'] .dia__estado {
-    color: var(--text-primary);
-  }
-
-  .mark {
-    display: inline-block;
-    width: 10px;
-    height: 10px;
-    flex: none;
-    border-radius: 50%;
-    background: var(--p0);
-  }
-
-  .mark--absent {
-    width: auto;
-    height: auto;
-    background: none;
+  .cal-celula--absent .cal-celula__status {
     color: var(--accent);
-    font-weight: 700;
-    line-height: 1;
-    font-size: 0.95rem;
   }
 
-  .mark--off {
-    width: 10px;
-    height: 2px;
-    border-radius: 0;
-    background: var(--text-secondary);
+  .cal-celula--noride {
+    background: var(--bg-card-hover);
+    color: var(--text-secondary);
+    text-decoration: line-through;
+  }
+
+  .cal-celula--hoje {
+    outline: 2px solid var(--accent);
+    outline-offset: -1px;
+  }
+
+  .cal-celula:not(.cal-celula--vazia):hover {
+    filter: brightness(0.95);
+  }
+
+  .cal-celula:active {
+    scale: 0.92;
+  }
+
+  .cal-detalhe {
+    padding: 0.5rem 0.75rem;
+    border-radius: var(--radius-sm);
+    background: var(--bg-primary);
+    border: 1px solid var(--border);
+    font-size: 0.8rem;
+    color: var(--text-primary);
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    animation: toast-entra 180ms ease both;
+  }
+
+  .cal-legenda {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.85rem;
+    padding-top: 0.4rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    border-top: 1px solid var(--border);
+  }
+
+  .cal-legenda__item {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .cal-dot {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+  }
+
+  .cal-dot--ride {
+    background: color-mix(in srgb, var(--success) 20%, transparent);
+    color: var(--success);
+  }
+
+  .cal-dot--agendado {
+    background: color-mix(in srgb, var(--p2) 25%, transparent);
+    color: var(--p2);
+  }
+
+  .cal-dot--absent {
+    background: color-mix(in srgb, var(--accent) 20%, transparent);
+    color: var(--accent);
+  }
+
+  .cal-dot--noride {
+    background: var(--bg-card-hover);
+    color: var(--text-secondary);
   }
 
   .ajuda {
@@ -347,12 +521,18 @@ import Wheel from '../components/Wheel.astro';
   let eu: Passenger;
   let mes: Awaited<ReturnType<typeof loadMonth>>;
 
-  function erro(msg: string) {
+  // One toast, two meanings, so `ok` is set on every call. Leaving it sticky
+  // painted every error after the first success in the success colour.
+  function toast(msg: string, ok: boolean) {
     const el = $('erro');
     el.textContent = msg;
+    el.dataset.ok = ok ? '1' : '0';
     el.hidden = false;
-    setTimeout(() => (el.hidden = true), 6000);
+    setTimeout(() => (el.hidden = true), ok ? 3000 : 6000);
   }
+
+  const erro = (msg: string) => toast(msg, false);
+  const aviso = (msg: string) => toast(msg, true);
 
   function anunciar(msg: string) {
     const el = $('anuncio');
@@ -361,8 +541,16 @@ import Wheel from '../components/Wheel.astro';
 
   const semMovimento = matchMedia('(prefers-reduced-motion: reduce)');
 
-  /** `alvo` steps back while the write is in flight. Same reason as the driver
-   *  screen: marking an absence from a phone with one bar showed nothing. */
+  function vibrar(ms = 15) {
+    try {
+      if ('vibrate' in navigator) navigator.vibrate(ms);
+    } catch {}
+  }
+
+  const esc = (s: string) =>
+    s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+
+  /** `alvo` steps back while the write is in flight. */
   async function commit(fn: () => Promise<void>, alvo?: HTMLElement) {
     alvo?.classList.add('pendente');
     try {
@@ -387,14 +575,18 @@ import Wheel from '../components/Wheel.astro';
     return `${WEEKDAY_SHORT[d.getDay()]} ${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  function rotuloExtenso(dia: string) {
+    const d = parseYmd(dia);
+    const nomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return `${nomes[d.getDay()]}, ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+  }
+
   async function carregar() {
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
-    // The month on screen may not contain today, and the buttons up top speak
-    // about today and tomorrow. So the fetched window covers both.
     const de = dias[0] < hoje ? dias[0] : hoje;
-    const ate = dias[dias.length - 1] > addDays(hoje, 1) ? dias[dias.length - 1] : addDays(hoje, 1);
+    const ate = dias[dias.length - 1] > addDays(hoje, 14) ? dias[dias.length - 1] : addDays(hoje, 14);
     try {
       mes = await loadMonth(de, ate, monthKey(ano, m0));
       pintar();
@@ -403,11 +595,8 @@ import Wheel from '../components/Wheel.astro';
     }
   }
 
-  /** Set by the month arrows, and only by them. */
   let direcaoMes: 'ant' | 'prox' | null = null;
 
-  /** The month name slides in the direction of the arrow; marking an absence
-   *  repaints in place. Same rule as the driver screen. */
   function pintar() {
     const dir = direcaoMes;
     direcaoMes = null;
@@ -426,14 +615,16 @@ import Wheel from '../components/Wheel.astro';
 
     $('ola').textContent = `Oi, ${eu.name.split(' ')[0]}`;
     const diasSemana = weekdayList(eu.weekdays);
-    $('escala').textContent = `Sua escala é ${diasSemana}. As caronas entram sozinhas nesses dias e você só marca quando não for.`;
+    $('escala').textContent = `Sua escala: ${diasSemana}.`;
     $('ajuda-escala').textContent = diasSemana;
     $('mes-nome').textContent = monthLabel(ano, m0);
 
-    renderAcoes();
+    renderHero();
 
-    // The number a passenger came here to check. When their own tap changes
-    // it, the change is the message, so the figure moves rather than swapping.
+    // The number this person opened the link for: what they owe right now.
+    // `r.total` counts rides up to today only. plannedTotal is deliberately
+    // never shown here — telling somebody on the 3rd that they owe the whole
+    // month is telling them about money they do not owe yet.
     const r = report(eu, dias, marcas(), mes.overrides, fer, hoje);
     const valor = brl(r.total);
     const elValor = $('resumo-valor');
@@ -450,146 +641,222 @@ import Wheel from '../components/Wheel.astro';
     const statusEl = $('resumo-status');
     if (pago) {
       statusEl.className = 'badge badge--success';
-      statusEl.textContent = '✓ Pago ao motorista';
+      statusEl.textContent = '✓ Mês quitado';
     } else {
       statusEl.className = 'badge badge--pending';
-      statusEl.textContent = 'A pagar no final do mês';
+      statusEl.textContent = 'Mês em andamento';
     }
 
-    const partes = [`${r.done} ${r.done === 1 ? 'carona realizada' : 'caronas realizadas'} × ${brl(eu.fare)}`];
-    if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta' : 'faltas'}`);
+    // The count and the fare that produced the figure above, so it can be
+    // checked. Still nothing about what the rest of the month will cost.
+    const partes = [`${r.done} ${r.done === 1 ? 'carona' : 'caronas'} × ${brl(eu.fare)}`];
+    if (r.faltas) partes.push(`${r.faltas} ${r.faltas === 1 ? 'falta avisada' : 'faltas avisadas'}`);
     $('resumo-linha').textContent = partes.join(' · ');
 
-    renderDias(dias, fer);
+    renderCalendario(dias, fer);
   }
 
-  function renderAcoes() {
-    const el = $('acoes');
+  function renderHero() {
+    const el = $('hero-carona');
     el.innerHTML = '';
 
     const a0 = Number(hoje.slice(0, 4));
     const a1 = Number(addDays(hoje, 14).slice(0, 4));
     const fer = new Map([...feriados(a0), ...feriados(a1)]);
 
-    const candidatos: string[] = [];
-    for (const dia of [hoje, addDays(hoje, 1)]) {
-      if (escalado(dia) && isRideDay(dia, mes.overrides, fer)) candidatos.push(dia);
+    let proximoDia: string | null = null;
+    for (let i = 0; i < 14; i++) {
+      const d = addDays(hoje, i);
+      if (!escalado(d)) continue;
+      // A holiday, or a day the driver called off, is not a next ride, so the
+      // scan keeps going instead of stopping on it. Today is the exception:
+      // "no ride today" is exactly what somebody opened the app to find out.
+      if (i > 0 && !isRideDay(d, mes.overrides, fer)) continue;
+      proximoDia = d;
+      break;
     }
 
-    if (candidatos.length === 0) {
-      let d = hoje;
-      for (let i = 0; i < 14 && candidatos.length === 0; i++) {
-        d = addDays(d, 1);
-        if (escalado(d) && isRideDay(d, mes.overrides, fer)) candidatos.push(d);
-      }
-    }
-
-    if (candidatos.length === 0) {
-      const p = document.createElement('p');
-      p.className = 'acoes__nota';
-      p.textContent = 'Nenhuma carona sua nos próximos dias.';
-      el.append(p);
+    if (!proximoDia) {
+      el.className = 'hero-card card';
+      el.innerHTML = `
+        <div class="hero-card__topo">
+          <span class="label">próxima carona</span>
+          <span class="badge badge--pending">Sem carona</span>
+        </div>
+        <div class="hero-card__corpo">
+          <p class="hero-card__titulo">Nenhuma carona nos próximos dias</p>
+          <p class="hero-card__sub">Você não possui dias agendados nas próximas duas semanas.</p>
+        </div>`;
       return;
     }
 
-    candidatos.forEach((dia, i) => {
-      const marcada = faltou(dia);
-      const quando = dia === hoje ? 'hoje' : dia === addDays(hoje, 1) ? 'amanhã' : rotulo(dia);
-      const b = document.createElement('button');
-      b.type = 'button';
-      b.className = `btn btn--block ${i === 0 && !marcada ? 'btn--primary btn--lg' : 'btn--ghost'}`;
-      b.setAttribute('aria-pressed', String(marcada));
-      b.setAttribute(
-        'aria-label',
-        marcada ? `Desfazer falta de ${quando}` : `Marcar falta de ${quando}`,
-      );
-      b.textContent = marcada ? `Voltei atrás, vou ${quando}` : `Não vou ${quando}`;
-      b.onclick = () => {
-        ultimoDia = dia;
-        commit(async () => {
-          await setMark(eu.id, dia, marcada ? null : false);
-          anunciar(marcada ? `Falta de ${quando} desfeita.` : `Falta de ${quando} registrada.`);
-        }, b);
-      };
-      el.append(b);
-    });
+    const dia = proximoDia;
+    const rodou = isRideDay(dia, mes.overrides, fer);
+    const falta = faltou(dia);
+    const quando = dia === hoje ? 'Hoje' : dia === addDays(hoje, 1) ? 'Amanhã' : rotuloExtenso(dia);
 
-    const nota = document.createElement('p');
-    nota.className = 'acoes__nota';
-    const marcadas = candidatos.filter(faltou).map((d) => (d === hoje ? 'hoje' : 'amanhã'));
-    nota.textContent = marcadas.length
-      ? `Falta de ${marcadas.join(' e ')} registrada. O motorista já vê.`
-      : 'Nas caronas agendadas, a presença entra sozinha.';
-    el.append(nota);
+    if (!rodou) {
+      el.className = 'hero-card card';
+      const motivo = fer.get(dia) ?? mes.overrideNotes.get(dia) ?? 'Sem carona';
+      el.innerHTML = `
+        <div class="hero-card__topo">
+          <span class="label">${quando} · ${rotulo(dia)}</span>
+          <span class="badge badge--pending">Sem carona</span>
+        </div>
+        <div class="hero-card__corpo">
+          <p class="hero-card__titulo">${esc(motivo)}</p>
+          <p class="hero-card__sub">O motorista ou feriado marcaram que não haverá carona neste dia.</p>
+        </div>`;
+      return;
+    }
+
+    if (falta) {
+      el.className = 'hero-card card hero-card--absent';
+      el.innerHTML = `
+        <div class="hero-card__topo">
+          <span class="label">${quando} · ${rotulo(dia)}</span>
+          <span class="badge badge--danger"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Falta informada</span>
+        </div>
+        <div class="hero-card__corpo">
+          <p class="hero-card__titulo">Você avisou que não vai</p>
+          <p class="hero-card__sub">O motorista já foi avisado e sua presença foi desmarcada para este dia.</p>
+        </div>`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn--success-soft btn--block btn--lg';
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg> Vou na carona afinal`;
+      btn.onclick = () => {
+        vibrar(15);
+        commit(async () => {
+          await setMark(eu.id, dia, null);
+          aviso(`Presença confirmada para ${quando.toLowerCase()}.`);
+          anunciar(`Falta de ${quando} desfeita.`);
+        }, btn);
+      };
+      el.append(btn);
+    } else {
+      el.className = 'hero-card card hero-card--active';
+      el.innerHTML = `
+        <div class="hero-card__topo">
+          <span class="label">${quando} · ${rotulo(dia)}</span>
+          <span class="badge badge--success"><span class="dot-pulse"></span> Carona confirmada</span>
+        </div>
+        <div class="hero-card__corpo">
+          <p class="hero-card__titulo">Sua presença está garantida</p>
+          <p class="hero-card__sub">O motorista já conta com você na carona. Só avise se não for.</p>
+        </div>`;
+
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn--danger-soft btn--block btn--lg';
+      btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg> Avisar que não vou ${quando === 'Hoje' ? 'hoje' : quando === 'Amanhã' ? 'amanhã' : 'neste dia'}`;
+      btn.onclick = () => {
+        vibrar(15);
+        commit(async () => {
+          await setMark(eu.id, dia, false);
+          aviso(`Falta informada para ${quando.toLowerCase()}.`);
+          anunciar(`Falta de ${quando} registrada.`);
+        }, btn);
+      };
+      el.append(btn);
+    }
   }
 
-  /** The day whose mark was changed last, so only that one animates in. */
-  let ultimoDia: string | null = null;
+  function renderCalendario(dias: string[], fer: Map<string, string>) {
+    const grade = $('cal-grade');
+    const detalheEl = $('cal-detalhe');
+    grade.innerHTML = '';
+    detalheEl.hidden = true;
 
-  function renderDias(dias: string[], fer: Map<string, string>) {
-    const el = $('dias');
-    el.innerHTML = '';
+    if (dias.length === 0) return;
+
+    // Domingo na esquerda (índice 0) e Sábado na direita (índice 6)
+    const primeiroDia = parseYmd(dias[0]);
+    const padStart = primeiroDia.getDay(); // 0=Dom, 1=Seg, ..., 6=Sáb
+
+    for (let i = 0; i < padStart; i++) {
+      const v = document.createElement('div');
+      v.className = 'cal-celula cal-celula--vazia';
+      v.setAttribute('aria-hidden', 'true');
+      grade.append(v);
+    }
 
     for (const dia of dias) {
-      if (!escalado(dia)) continue;
+      const d = parseYmd(dia);
+      const numDia = d.getDate();
+      const escDia = escalado(dia);
       const rodou = isRideDay(dia, mes.overrides, fer);
       const falta = faltou(dia);
-      const estado = !rodou ? 'noride' : falta ? 'absent' : 'ride';
+      const ehHoje = dia === hoje;
+      const ehFuturo = dia > hoje;
+      const ehFuturoOuHoje = dia >= hoje;
 
-      const li = document.createElement('li');
-      if (dia === hoje) li.className = 'hoje-linha';
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'cal-celula';
+      if (ehHoje) btn.classList.add('cal-celula--hoje');
 
-      const texto = !rodou
-        ? (fer.get(dia) ?? 'sem carona')
-        : falta
-          ? 'faltou (descontado)'
-          : dia > hoje
-            ? 'agendado'
-            : 'foi';
-      const marca = !rodou
-        ? '<span class="mark mark--off" aria-hidden="true"></span>'
-        : falta
-          ? '<span class="mark mark--absent" aria-hidden="true">✕</span>'
-          : '<span class="mark" aria-hidden="true"></span>';
+      const diaNumSpan = document.createElement('span');
+      diaNumSpan.className = 'cal-celula__num';
+      diaNumSpan.textContent = String(numDia);
+      btn.append(diaNumSpan);
 
-      if (!rodou) {
-        const div = document.createElement('div');
-        div.className = 'dia';
-        div.dataset.estado = estado;
-        div.innerHTML = `
-          <div class="dia__info">
-            <span class="dia__data">${rotulo(dia)}</span>
-            <span class="dia__estado">${marca} ${texto}</span>
-          </div>`;
-        li.append(div);
+      let estadoTexto = '';
+      if (!escDia) {
+        btn.classList.add('cal-celula--fora');
+        estadoTexto = `${rotulo(dia)}: fora da sua escala.`;
+      } else if (!rodou) {
+        btn.classList.add('cal-celula--noride');
+        const motivo = fer.get(dia) ?? mes.overrideNotes.get(dia) ?? 'Sem carona';
+        estadoTexto = `${rotulo(dia)}: ${motivo}.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = '—';
+        btn.append(icon);
+      } else if (falta) {
+        btn.classList.add('cal-celula--absent');
+        estadoTexto = `${rotulo(dia)}: falta registrada.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = '✕';
+        btn.append(icon);
+      } else if (ehFuturo || ehHoje) {
+        // Dias agendados que ainda não foram: Amarelo / Dourado
+        btn.classList.add('cal-celula--agendado');
+        estadoTexto = `${rotulo(dia)}: carona agendada.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = '●';
+        btn.append(icon);
       } else {
-        const b = document.createElement('button');
-        b.type = 'button';
-        b.className = 'dia';
-        b.dataset.estado = estado;
-        b.setAttribute('aria-pressed', String(falta));
-        b.setAttribute(
-          'aria-label',
-          `${rotulo(dia)}: ${falta ? 'falta registrada. Toque para desfazer.' : 'carona confirmada. Toque para marcar falta.'}`,
-        );
-        b.innerHTML = `
-          <div class="dia__info">
-            <span class="dia__data">${rotulo(dia)}</span>
-            <span class="dia__estado">${marca} ${texto}</span>
-          </div>`;
-        if (ultimoDia === dia) b.querySelector('.mark')?.classList.add('marca-nova');
-        b.onclick = () => {
-          ultimoDia = dia;
+        // Dias passados onde a carona aconteceu: Verde
+        btn.classList.add('cal-celula--ride');
+        estadoTexto = `${rotulo(dia)}: carona realizada.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = '✓';
+        btn.append(icon);
+      }
+
+      btn.setAttribute('aria-label', estadoTexto);
+
+      btn.onclick = () => {
+        vibrar(12);
+        detalheEl.hidden = false;
+        detalheEl.textContent = estadoTexto;
+
+        if (escDia && rodou && ehFuturoOuHoje) {
+          btn.classList.add('stamp-pop');
           commit(async () => {
             await setMark(eu.id, dia, falta ? null : false);
-            anunciar(falta ? `Falta de ${rotulo(dia)} desfeita.` : `Falta de ${rotulo(dia)} registrada.`);
-          }, b);
-        };
-        li.append(b);
-      }
-      el.append(li);
+            aviso(falta ? `Presença confirmada (${rotulo(dia)}).` : `Falta informada (${rotulo(dia)}).`);
+          }, btn);
+        }
+      };
+
+      grade.append(btn);
     }
-    ultimoDia = null;
   }
 
   $('mes-ant').onclick = () => {
