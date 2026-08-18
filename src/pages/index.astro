@@ -52,17 +52,21 @@ import Wheel from '../components/Wheel.astro';
     </div>
 
     <div id="app" hidden>
+      <!-- Today leads the page. It is the only thing that changes daily and
+           the reason the app gets opened; the month below it is the thing you
+           browse. It also has to sit above the month nav, because it always
+           shows today no matter which month those arrows are pointing at. -->
+      <section id="hoje" class="hoje"></section>
+
       <nav class="mesnav">
         <button id="mes-ant" class="icon-btn" type="button" aria-label="Mês anterior">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M15 18l-6-6 6-6"></path></svg>
         </button>
-        <h1 id="mes-nome" class="mesnav__nome">—</h1>
+        <h2 id="mes-nome" class="mesnav__nome">—</h2>
         <button id="mes-prox" class="icon-btn" type="button" aria-label="Próximo mês">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M9 18l6-6-6-6"></path></svg>
         </button>
       </nav>
-
-      <section id="hoje" class="hoje"></section>
 
       <section id="total-secao" class="total">
         <span class="label">a receber no mês</span>
@@ -117,11 +121,16 @@ import Wheel from '../components/Wheel.astro';
       <div class="field">
         <span id="f-dias-rot">Dias da semana</span>
         <div class="weekpick" id="f-dias" role="group" aria-labelledby="f-dias-rot"></div>
+        <div class="weekpick-atalhos">
+          <button type="button" class="chip-btn" id="f-dias-seg-sex">Seg a sex</button>
+          <button type="button" class="chip-btn" id="f-dias-todos">Todos</button>
+          <button type="button" class="chip-btn" id="f-dias-limpar">Limpar</button>
+        </div>
         <span class="hint">A carona entra sozinha nesses dias. A pessoa só marca quando não for.</span>
       </div>
 
       <label class="field"><span>Valor por dia</span>
-        <span class="money"><span aria-hidden="true">R$</span><input type="number" id="f-valor" min="0" step="0.01" required inputmode="decimal" placeholder="0,00" /></span>
+        <span class="money"><span aria-hidden="true">R$</span><input type="text" id="f-valor" required inputmode="decimal" placeholder="0,00" /></span>
       </label>
 
       <label class="field"><span>Primeiro dia</span>
@@ -200,52 +209,93 @@ import Wheel from '../components/Wheel.astro';
     view-transition-name: mes;
   }
 
-  /* --- Today --- */
-  /* The first block on the screen, because the daily question is who is in the
-     car, not what the month adds up to. */
+  /* --- Today ---
+     The first block on the screen, because the daily question is who is in
+     the car, not what the month adds up to. Full-width rows rather than the
+     chips this used to be: the block earns the top of the screen by being the
+     day's control surface, and it matches the passenger screen's day list. */
   .hoje {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    align-items: center;
-    min-height: var(--tap);
-    margin: 0.25rem 0 1.5rem;
-    padding-bottom: 1.4rem;
+    margin: 1.25rem 0 1.75rem;
+    padding-bottom: 1.5rem;
     border-bottom: 1px solid var(--border);
   }
 
-  .hoje__dia {
-    width: 100%;
-    margin-bottom: 0.55rem;
-    font-family: var(--font-mono);
-    font-size: 0.75rem;
-    letter-spacing: 0.02em;
+  /* Red stays meaning "now" here even though the date itself is set in ink. */
+  .hoje__quando {
     color: var(--accent);
+  }
+
+  .hoje__data {
+    margin-bottom: 0.9rem;
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.15;
+    text-wrap: balance;
+  }
+
+  .hoje__lista {
+    display: grid;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    overflow: hidden;
+  }
+
+  .hoje__lista li {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .hoje__lista li:last-child {
+    border-bottom: none;
+  }
+
+  .hoje__pessoa {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    width: 100%;
+    min-height: 56px;
+    padding: 0.5rem 0.9rem;
+    text-align: left;
+    transition: background var(--transition-fast);
+  }
+
+  .hoje__pessoa:hover {
+    background: var(--bg-card-hover);
+  }
+
+  .hoje__nome {
+    flex: 1;
+    min-width: 0;
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  /* The strike says it and the word says it, because the strike alone is a
+     colour-and-decoration signal and this is the one state that costs money. */
+  .hoje__pessoa[data-falta='1'] .hoje__nome {
+    color: var(--text-secondary);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent);
+  }
+
+  .hoje__estado {
+    flex: none;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  .hoje__ajuda {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
   }
 
   .hoje__vazio {
     font-size: 0.9rem;
     color: var(--text-secondary);
-  }
-
-  .pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-height: var(--tap);
-    padding: 0.4rem 1rem 0.4rem 0.8rem;
-    border: 1px solid var(--border-hover);
-    border-radius: var(--radius-full);
-    font-size: 0.95rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .pill[data-falta='1'] {
-    border-color: var(--accent);
-    color: var(--text-secondary);
-    text-decoration: line-through;
-    text-decoration-color: var(--accent);
   }
 
   /* --- Total --- */
@@ -726,19 +776,39 @@ import Wheel from '../components/Wheel.astro';
      It is the reason the weekday row exists, so it sits directly under it. */
   .editor__resumo {
     margin-top: 1.25rem;
-    padding: 0.7rem 0.85rem;
+    padding: 0.8rem 0.95rem;
     border: 1px solid var(--border);
     border-radius: var(--radius-sm);
     background: var(--bg-card);
-    font-size: 0.82rem;
-    line-height: 1.45;
-    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
     font-variant-numeric: tabular-nums;
   }
 
-  .editor__resumo strong {
+  .editor__resumo-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+  }
+
+  .editor__resumo-badge {
+    font-size: 0.85rem;
+    font-weight: 700;
     color: var(--text-primary);
-    font-weight: 600;
+  }
+
+  .editor__resumo-valor {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text-primary);
+  }
+
+  .editor__resumo-detalhe {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
   }
 
   .editor__erro {
@@ -789,6 +859,7 @@ import Wheel from '../components/Wheel.astro';
     monthLabel,
     nextMark,
     weekStart,
+    parseBrl,
     parseYmd,
     report,
     weekdayList,
@@ -808,6 +879,7 @@ import Wheel from '../components/Wheel.astro';
     setPaid,
     type PassengerRow,
   } from '../lib/db';
+  import confetti from 'canvas-confetti';
 
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
@@ -827,6 +899,25 @@ import Wheel from '../components/Wheel.astro';
   const marksOf = (id: string) => mes.marks.get(id) ?? new Map<string, boolean>();
 
   const semMovimento = matchMedia('(prefers-reduced-motion: reduce)');
+
+  function vibrar(ms = 15) {
+    try {
+      if ('vibrate' in navigator) navigator.vibrate(ms);
+    } catch {}
+  }
+
+  function dispararConfetes() {
+    if (semMovimento.matches) return;
+    try {
+      confetti({
+        particleCount: 45,
+        spread: 60,
+        origin: { y: 0.75 },
+        colors: ['#2A78D6', '#1BAF7A', '#EDA100', '#C1121F'],
+        disableForReducedMotion: true,
+      });
+    } catch {}
+  }
 
   function aviso(msg: string, ok = false) {
     const el = $('erro');
@@ -929,13 +1020,24 @@ import Wheel from '../components/Wheel.astro';
     const d = parseYmd(hoje);
     // Holidays for today's year, not for the month on screen.
     const fer = feriados(d.getFullYear());
-    const rotulo = `${WEEKDAY_SHORT[d.getDay()]}, ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
     el.innerHTML = '';
 
-    const cab = document.createElement('span');
-    cab.className = 'hoje__dia';
-    cab.textContent = `hoje · ${rotulo}`;
-    el.append(cab);
+    const eyebrow = document.createElement('span');
+    eyebrow.className = 'label hoje__quando';
+    eyebrow.textContent = 'hoje';
+    el.append(eyebrow);
+
+    const titulo = document.createElement('h1');
+    titulo.className = 'hoje__data';
+    // "segunda-feira, 17 de agosto" is not how anybody says it out loud.
+    titulo.textContent = new Intl.DateTimeFormat('pt-BR', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+    })
+      .format(d)
+      .replace('-feira', '');
+    el.append(titulo);
 
     const forcado = mes.overrides.get(hoje);
     const rodou = forcado !== undefined ? forcado : !fer.has(hoje);
@@ -961,26 +1063,40 @@ import Wheel from '../components/Wheel.astro';
       return;
     }
 
+    const lista = document.createElement('ul');
+    lista.className = 'hoje__lista';
+
     for (const p of escalados) {
       const i = pessoas.indexOf(p);
       const faltou = marksOf(p.id).get(hoje) === false;
       const b = document.createElement('button');
       b.type = 'button';
-      b.className = 'pill';
+      b.className = 'hoje__pessoa';
       b.dataset.falta = faltou ? '1' : '0';
       b.setAttribute('aria-pressed', String(faltou));
-      b.innerHTML = `<span class="dot" style="--pc:${cor(i)}"></span>`;
-      b.append(p.name);
+      b.innerHTML =
+        `<span class="dot" style="--pc:${cor(i)}"></span>` +
+        `<span class="hoje__nome">${esc(p.name)}</span>` +
+        (faltou ? '<span class="hoje__estado">faltou</span>' : '');
       b.setAttribute(
         'aria-label',
         faltou ? `${p.name} faltou hoje. Desfazer.` : `Marcar falta de ${p.name} hoje`,
       );
       b.onclick = () => {
+        vibrar(15);
         ultimaMarca = `${p.id}:${hoje}`;
         commit(() => setMark(p.id, hoje, faltou ? null : false), b);
       };
-      el.append(b);
+      const li = document.createElement('li');
+      li.append(b);
+      lista.append(li);
     }
+    el.append(lista);
+
+    const ajuda = document.createElement('p');
+    ajuda.className = 'hoje__ajuda';
+    ajuda.textContent = 'Toque num nome para marcar falta.';
+    el.append(ajuda);
   }
 
   let totalAnterior = '';
@@ -1064,7 +1180,15 @@ import Wheel from '../components/Wheel.astro';
       bPago.innerHTML =
         '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6L9 17l-5-5"/></svg>' +
         (pago ? 'Pago' : 'Marcar pago');
-      bPago.onclick = () => commit(() => setPaid(p.id, chave, !pago, r.total), bPago);
+      bPago.onclick = () => {
+        vibrar(20);
+        // After the write, not before it. Firing on the tap meant a failed
+        // save threw confetti and then an error, with the row still unpaid.
+        commit(async () => {
+          await setPaid(p.id, chave, !pago, r.total);
+          if (!pago) dispararConfetes();
+        }, bPago);
+      };
 
       const bLink = document.createElement('button');
       bLink.type = 'button';
@@ -1152,11 +1276,13 @@ import Wheel from '../components/Wheel.astro';
       );
       // One tap cycles the day: normal → no ride → normal. On a holiday the
       // cycle inverts, because there the default is already "no ride".
-      diaBtn.onclick = () =>
+      diaBtn.onclick = () => {
+        vibrar(15);
         commit(
           () => setOverride(dia, forcado === undefined ? !rodou : null, fer.get(dia)),
           diaBtn,
         );
+      };
       th.append(diaBtn);
       tr.append(th);
 
@@ -1207,6 +1333,7 @@ import Wheel from '../components/Wheel.astro';
         // so the new mark lands instead of appearing. Only that one cell.
         if (ultimaMarca === `${p.id}:${dia}`) b.firstElementChild?.classList.add('marca-nova');
         b.onclick = () => {
+          vibrar(15);
           ultimaMarca = `${p.id}:${dia}`;
           commit(() => setMark(p.id, dia, nextMark(estado)), b);
         };
@@ -1241,6 +1368,7 @@ import Wheel from '../components/Wheel.astro';
   }
 
   async function copiarResumo() {
+    vibrar(15);
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
@@ -1257,34 +1385,62 @@ import Wheel from '../components/Wheel.astro';
     );
     const texto = `Caronas de ${monthLabel(ano, m0)}\n\n${linhas.join('\n')}\n\nTotal: ${brl(total)}`;
 
+    const btn = $('copiar');
+    // Captured once, not per call: a second tap inside the two seconds would
+    // read "Copiado!" as the markup to restore and the button would wear that
+    // label for the rest of the session.
+    if (copiarHtml === null) copiarHtml = btn.innerHTML;
     try {
-      if (navigator.share) await navigator.share({ text: texto });
-      else {
+      let rotulo: string;
+      if (navigator.share) {
+        await navigator.share({ text: texto });
+        // Nothing reached the clipboard on this path, and on a phone it is the
+        // only path there is.
+        rotulo = 'Enviado!';
+      } else {
         await navigator.clipboard.writeText(texto);
         aviso('Resumo copiado.', true);
+        rotulo = 'Copiado!';
       }
+      clearTimeout(copiarTimer);
+      btn.classList.add('btn--copiado');
+      btn.innerHTML =
+        '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"></polyline></svg> ' +
+        rotulo;
+      copiarTimer = setTimeout(() => {
+        btn.classList.remove('btn--copiado');
+        btn.innerHTML = copiarHtml as string;
+      }, 2000);
     } catch {
       /* share sheet dismissed */
     }
   }
 
+  let copiarHtml: string | null = null;
+  let copiarTimer: ReturnType<typeof setTimeout>;
+
   // ---------------------------------------------------------------- editor ---
 
   let editando: PassengerRow | null = null;
   let diasSel = new Set<number>();
+  const WEEK_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
 
   function montarWeekpick() {
     const box = $('f-dias');
     box.innerHTML = '';
-    WEEKDAY_SHORT.forEach((nome, d) => {
+    WEEK_DISPLAY_ORDER.forEach((d) => {
+      const nome = WEEKDAY_SHORT[d];
       const b = document.createElement('button');
       b.type = 'button';
       b.textContent = nome;
       b.dataset.fds = d === 0 || d === 6 ? '1' : '0';
       b.setAttribute('aria-pressed', String(diasSel.has(d)));
       b.onclick = () => {
+        vibrar(12);
         diasSel.has(d) ? diasSel.delete(d) : diasSel.add(d);
         b.setAttribute('aria-pressed', String(diasSel.has(d)));
+        b.classList.add('stamp-pop');
+        setTimeout(() => b.classList.remove('stamp-pop'), 180);
         resumoEditor();
       };
       box.append(b);
@@ -1306,11 +1462,14 @@ import Wheel from '../components/Wheel.astro';
     if (el.hidden) return;
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
+    // Unparseable while somebody is still typing is not an error yet, it just
+    // has no money in it. Salvar is where it has to be a number.
+    const fare = parseBrl(($('f-valor') as HTMLInputElement).value) ?? 0;
     const previa = {
       id: 'previa',
       name: '',
       weekdays: [...diasSel],
-      fare: Number(($('f-valor') as HTMLInputElement).value) || 0,
+      fare,
       start_date: ($('f-inicio') as HTMLInputElement).value || hoje,
       end_date: ($('f-fim') as HTMLInputElement).value || null,
     };
@@ -1328,9 +1487,12 @@ import Wheel from '../components/Wheel.astro';
     );
     // Holidays and the days the driver called off are already out of this
     // count, which is the whole reason it is worth showing.
-    el.innerHTML = `<strong>${r.planned} caronas</strong> em ${esc(monthLabel(ano, m0))}${
-      previa.fare > 0 ? `, <strong>${brl(r.plannedTotal)}</strong> no mês` : ''
-    }. Feriados e dias sem carona já estão fora.`;
+    el.innerHTML = `
+      <div class="editor__resumo-header">
+        <span class="editor__resumo-badge">${r.planned} ${r.planned === 1 ? 'carona prevista' : 'caronas previstas'}</span>
+        ${previa.fare > 0 ? `<span class="editor__resumo-valor">${brl(r.plannedTotal)}</span>` : ''}
+      </div>
+      <p class="editor__resumo-detalhe">em ${esc(monthLabel(ano, m0))} · feriados e folgas já descontados</p>`;
   }
 
   function erroEditor(msg: string | null) {
@@ -1344,7 +1506,7 @@ import Wheel from '../components/Wheel.astro';
     diasSel = new Set(p?.weekdays ?? [1, 2, 3, 4, 5]);
     $('editor-titulo').textContent = p ? `Editar ${p.name.split(' ')[0]}` : 'Nova pessoa';
     ($('f-nome') as HTMLInputElement).value = p?.name ?? '';
-    ($('f-valor') as HTMLInputElement).value = String(p?.fare ?? '');
+    ($('f-valor') as HTMLInputElement).value = p?.fare ? p.fare.toFixed(2).replace('.', ',') : '';
     ($('f-inicio') as HTMLInputElement).value = p?.start_date ?? hoje;
     ($('f-fim') as HTMLInputElement).value = p?.end_date ?? '';
     // Nobody stops riding before they start, so the field only exists on
@@ -1364,6 +1526,25 @@ import Wheel from '../components/Wheel.astro';
     $(id).addEventListener('input', resumoEditor);
   }
 
+  $('f-dias-seg-sex').onclick = () => {
+    vibrar(15);
+    diasSel = new Set([1, 2, 3, 4, 5]);
+    montarWeekpick();
+    resumoEditor();
+  };
+  $('f-dias-todos').onclick = () => {
+    vibrar(15);
+    diasSel = new Set([1, 2, 3, 4, 5, 6, 0]);
+    montarWeekpick();
+    resumoEditor();
+  };
+  $('f-dias-limpar').onclick = () => {
+    vibrar(15);
+    diasSel.clear();
+    montarWeekpick();
+    resumoEditor();
+  };
+
   // Clicking the backdrop closes the sheet. The dialog fills its own box, so a
   // click landing on the element itself landed outside the form.
   $('editor').addEventListener('click', (ev) => {
@@ -1379,11 +1560,21 @@ import Wheel from '../components/Wheel.astro';
       $('f-dias').querySelector('button')?.focus();
       return;
     }
+    // The field is type="text" so both separators can be typed, which also
+    // means the browser no longer rejects "quinze". A fare that fell through
+    // as 0 would price every ride this person takes at nothing.
+    const fare = parseBrl(($('f-valor') as HTMLInputElement).value);
+    if (fare === null) {
+      ev.preventDefault();
+      erroEditor('Informe o valor por dia. Por exemplo: 18,50.');
+      $('f-valor').focus();
+      return;
+    }
     const dados = {
       id: editando?.id,
       name: ($('f-nome') as HTMLInputElement).value.trim(),
       weekdays: [...diasSel].sort(),
-      fare: Number(($('f-valor') as HTMLInputElement).value),
+      fare,
       start_date: ($('f-inicio') as HTMLInputElement).value,
       end_date: ($('f-fim') as HTMLInputElement).value || null,
     };

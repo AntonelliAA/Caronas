@@ -479,6 +479,36 @@ input:focus-visible {
   scale: 0.94;
 }
 
+.weekpick-atalhos {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+/* 44px like everything else that gets tapped. These are secondary shortcuts,
+   so they stay visually light, but a thumb does not know that. */
+.chip-btn {
+  min-height: var(--tap);
+  padding: 0.25rem 0.85rem;
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-full);
+  color: var(--text-secondary);
+  background: var(--bg-card);
+  transition: background var(--transition-fast), color var(--transition-fast),
+    border-color var(--transition-fast), scale var(--transition-fast);
+}
+
+.chip-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-hover);
+}
+
+.chip-btn:active {
+  scale: 0.95;
+}
+
 /* --- Motion ---
    Every write here is a round trip to Supabase, and until it came back the
    screen said nothing at all. Two states cover it: the control that was tapped
@@ -491,6 +521,22 @@ input:focus-visible {
 
 .marca-nova {
   animation: marca-entra 260ms var(--ease-out-back) both;
+}
+
+.stamp-pop {
+  animation: stamp 180ms var(--ease-out-back);
+}
+
+@keyframes stamp {
+  0% { scale: 0.9; }
+  50% { scale: 1.1; }
+  100% { scale: 1; }
+}
+
+.btn--copiado {
+  background: color-mix(in srgb, var(--success) 12%, transparent) !important;
+  border-color: var(--success) !important;
+  color: var(--success) !important;
 }
 
 @keyframes marca-entra {
