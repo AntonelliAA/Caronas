@@ -38,7 +38,11 @@ These break silently. The site still renders and the money comes out wrong.
    RLS is world-writable by anyone holding the anon key.
 7. **Fare, schedule, no-ride days, and payments are driver-only** (`to
    authenticated`). Absences are deliberately open, which is what lets a
-   passenger use their link without a login.
+   passenger use their link without a login — but only for the day of the trip
+   or later, so a closed month cannot be reopened. Any date comparison in a
+   policy uses `(now() at time zone 'America/Sao_Paulo')::date`, never
+   `current_date`: the database runs in UTC and rolls over at 21:00 in Porto
+   Alegre. It is rule 1 again, one layer down.
 8. **Page `<style>` blocks are `is:global`.** Astro scopes styles to elements in
    the template, and most of the UI is built in JS at runtime, so scoped rules
    never reach it.

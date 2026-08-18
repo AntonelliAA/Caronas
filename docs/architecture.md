@@ -117,6 +117,20 @@ fare, a schedule, or a payment, or add a ride. Every write reachable without a
 login lowers a bill; the policies on `day_marks` pin the anon role to
 `rode = false` precisely so that none of them can raise one.
 
+Nor can they lower one retroactively. Writing an absence is bounded to the day
+of the trip or later, so a closed month cannot be reopened and quietly emptied
+of days somebody was already billed for. The bound is evaluated in Brazil's
+timezone rather than the server's, because Supabase runs the database in UTC
+and `current_date` there rolls over at 21:00 in Porto Alegre, which would
+refuse tonight's absence for a day that has not ended where the passenger is
+standing. Deleting an absence carries no deadline: it puts the day back on the
+bill, so it is the one anon write that costs money rather than saving it.
+
+The driver keeps the override. Fixing a genuinely forgotten absence from last
+week is a ledger tap on the driver screen, which is the right place for it,
+because the driver is the only one who can confirm the person was not in the
+car.
+
 The day tables stay readable without a login because both screens have to render
 a month. They are keyed by passenger uuid and, with `passengers` closed, a uuid
 resolves to nothing. For four people who share a car every

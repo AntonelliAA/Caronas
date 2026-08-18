@@ -77,6 +77,14 @@ alter table payments      enable row level security;
 -- select policy on passengers created in the table editor under a name this
 -- file never knew. What follows the drop is the whole intended policy set, so
 -- the file declares the end state instead of trusting what a human clicked.
+--
+-- The sweep covers every table in `public`, not the four this file owns. It
+-- used to name them, and that left a hole exactly the shape of the bug it was
+-- written to prevent: the orphaned `absences` table sat here for months with
+-- select, insert and delete all granted to `public` using (true), and no run
+-- of this file ever touched it because it was not on the list. A table this
+-- file does not recreate below ends up with RLS on and no policy, which is
+-- closed rather than open, so the wide sweep fails in the safe direction.
 do $$
 declare pol record;
 begin
@@ -84,7 +92,6 @@ begin
     select policyname, tablename
     from pg_policies
     where schemaname = 'public'
-      and tablename in ('passengers', 'day_marks', 'day_overrides', 'payments')
   loop
     execute format('drop policy %I on public.%I', pol.policyname, pol.tablename);
   end loop;
@@ -105,9 +112,30 @@ create policy "public read" on payments      for select using (true);
 -- one of these is pinned to rode = false, so the only writes reachable without
 -- a login take a day off a bill. Adding a ride raises what somebody owes, and
 -- that stays with the driver.
-create policy "passenger marks"    on day_marks for insert to anon with check (rode = false);
-create policy "passenger unmarks"  on day_marks for delete to anon using (rode = false);
-create policy "passenger corrects" on day_marks for update to anon using (rode = false) with check (rode = false);
+--
+-- Writing an absence is also bounded to the day of the trip or later. Without
+-- it, somebody could reopen a closed month and subtract days they had already
+-- been billed for, and the driver would have no way to know it happened.
+--
+-- The date is Brazil's, not the server's. Supabase runs the database in UTC,
+-- so `current_date` rolls over at 21:00 in Porto Alegre and a passenger
+-- marking tonight's absence after nine would be refused for a day that, where
+-- they are standing, has not ended. This is the same trap as parseYmd on the
+-- client, one layer down.
+create policy "passenger marks" on day_marks
+  for insert to anon
+  with check (rode = false and day >= (now() at time zone 'America/Sao_Paulo')::date);
+
+create policy "passenger corrects" on day_marks
+  for update to anon
+  using (rode = false)
+  with check (rode = false and day >= (now() at time zone 'America/Sao_Paulo')::date);
+
+-- Undoing carries no deadline, and deliberately so. Deleting an absence puts
+-- the day back on the bill, so it is the one anon write that costs the person
+-- money rather than saving it, and there is nothing to abuse. Bounding it
+-- would only trap a mistyped absence past midnight with no way back.
+create policy "passenger unmarks" on day_marks for delete to anon using (rode = false);
 
 -- Fare, schedule, no-ride days, payment, and any ride added by hand: signed-in
 -- driver only.
@@ -155,8 +183,13 @@ grant execute on function public.passenger_by_token(text) to anon, authenticated
 notify pgrst, 'reload schema';
 
 -- What actually ended up on the database, printed because the one bug this
--- file has ever shipped was a policy nobody knew was there. Expect eight rows
--- and not one of them on passengers.
+-- file has ever shipped was a policy nobody knew was there.
+--
+-- Expect ten rows: five on day_marks, two on day_overrides, two on payments,
+-- and exactly one on passengers, the driver's. Any row on passengers granted
+-- to anon is the leak this whole file is shaped around, whatever it is called.
+-- (This said eight for a while and the file creates ten, which is the sort of
+-- thing that turns a check into decoration. Count them if you change them.)
 select tablename, policyname, roles, cmd
 from pg_policies
 where schemaname = 'public'
@@ -180,6 +213,19 @@ order by tablename, policyname;
 -- alter index absences_day_idx rename to day_marks_day_idx;
 --
 -- Then re-run the whole policy section, which is safe on its own.
+--
+-- On this project the rename never ran: day_marks was created fresh next to
+-- `absences`, which stayed behind holding two rows that already existed in
+-- day_marks, and three policies granted to public. It was dropped on
+-- 2026-08-17 after checking both rows against day_marks one at a time. If you
+-- are looking at a database that still has one, check before you drop:
+--
+-- select a.day, a.passenger_id,
+--        exists (select 1 from day_marks m
+--                where m.passenger_id = a.passenger_id and m.day = a.day)
+-- from absences a;
+--
+-- Every row must come back true. Then `drop table absences`.
 --
 -- If anon could read passengers on your database, re-running this whole file
 -- closes it whatever the policy was called. Then rotate, because a token that
