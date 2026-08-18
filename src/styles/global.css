@@ -289,6 +289,43 @@ ul {
   font-size: 1.05rem;
 }
 
+/* --- Toast ---
+   Was a sticky bar above the content on both screens. Sticky keeps its box in
+   the flow, so every "Link copiado." shoved the whole page down a line and
+   yanked it back two seconds later. Fixed and out of flow, at the bottom edge
+   where the thumb already is. It never covers the modal, which is in the top
+   layer and carries its own message. */
+.toast {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: calc(1rem + env(safe-area-inset-bottom));
+  translate: -50% 0;
+  width: min(420px, calc(100vw - 2rem));
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-strong);
+  color: #fff;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  animation: toast-entra 260ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Confirmation, not failure. Red is what went wrong. */
+.toast[data-ok='1'] {
+  background: var(--text-primary);
+  color: var(--bg-primary);
+}
+
+@keyframes toast-entra {
+  from {
+    opacity: 0;
+    translate: -50% 12px;
+  }
+}
+
 /* --- Card --- */
 .card {
   background: var(--bg-card);

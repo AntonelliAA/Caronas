@@ -14,7 +14,7 @@ import Wheel from '../components/Wheel.astro';
     </button>
   </header>
 
-  <p id="erro" class="erro" role="alert" hidden></p>
+  <p id="erro" class="toast" role="alert" hidden></p>
   <div id="anuncio" class="sr-only" aria-live="polite"></div>
 
   <main class="wrap">
@@ -73,17 +73,6 @@ import Wheel from '../components/Wheel.astro';
 </Layout>
 
 <style is:global>
-  .erro {
-    position: sticky;
-    top: 0;
-    z-index: 30;
-    margin: 0;
-    padding: 0.7rem 1rem;
-    background: var(--accent-strong);
-    color: #fff;
-    font-size: 0.85rem;
-  }
-
   .estado {
     margin-top: 3rem;
     color: var(--text-secondary);
