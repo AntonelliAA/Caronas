@@ -1807,7 +1807,16 @@ import Wheel from '../components/Wheel.astro';
       email: ($('email') as HTMLInputElement).value,
       password: ($('senha') as HTMLInputElement).value,
     });
-    if (error) erro('Email ou senha não conferem.');
+    if (!error) return;
+    // A paused Supabase project or a dropped connection used to land here as
+    // "wrong password", which sent the driver retyping a password that was
+    // fine. Only blame the credentials when the server actually did.
+    if (error.code === 'invalid_credentials') erro('Email ou senha não conferem.');
+    else if (error.code === 'email_not_confirmed')
+      erro('Esse email ainda não foi confirmado no Supabase.');
+    else if (!error.status || error.status >= 500)
+      erro('O servidor não respondeu. Veja se o projeto no Supabase está pausado.');
+    else erro(`Não deu para entrar: ${error.message}`);
   });
 
   if (!configured) {
