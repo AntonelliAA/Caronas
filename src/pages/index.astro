@@ -1869,10 +1869,15 @@ import Wheel from '../components/Wheel.astro';
 
   $('login-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();
+    // A sign-in over a slow connection takes seconds, and with no sign of it
+    // the button got tapped again, sending the request twice.
+    const botao = (ev as SubmitEvent).submitter as HTMLButtonElement | null;
+    botao?.classList.add('pendente');
     const { error } = await db.auth.signInWithPassword({
-      email: ($('email') as HTMLInputElement).value,
+      email: ($('email') as HTMLInputElement).value.trim(),
       password: ($('senha') as HTMLInputElement).value,
     });
+    botao?.classList.remove('pendente');
     if (!error) return;
     // A paused Supabase project or a dropped connection used to land here as
     // "wrong password", which sent the driver retyping a password that was
@@ -1888,12 +1893,17 @@ import Wheel from '../components/Wheel.astro';
   if (!configured) {
     mostrar('setup');
   } else {
-    db.auth.onAuthStateChange((_e, session) => {
-      if (session) {
-        carregar();
-      } else {
+    db.auth.onAuthStateChange((evento, session) => {
+      if (!session) {
         mostrar('login');
+        return;
       }
+      // A token refresh is the same driver, an hour later. Reloading on it
+      // repainted the whole screen out of nowhere.
+      if (evento === 'TOKEN_REFRESHED' || evento === 'USER_UPDATED') return;
+      // Deferred, as supabase-js asks: this callback runs while the client
+      // holds its auth lock, and carregar() needs that lock for every query.
+      setTimeout(carregar, 0);
     });
   }
 </script>
