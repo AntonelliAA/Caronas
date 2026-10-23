@@ -1010,14 +1010,25 @@ import Wheel from '../components/Wheel.astro';
    * control that was tapped: it steps back for as long as the request is in
    * flight, which on a phone in a parking garage is the difference between a
    * tap that landed and a tap that did nothing.
+   *
+   * It is released on success too. Most controls are rebuilt by the reload and
+   * never noticed, but the payment sheet's Adicionar is static markup: it kept
+   * `pendente` after the first payment and refused every tap after that, for
+   * whoever the sheet was opened on next.
+   *
+   * Resolves true when the write landed, so a caller can tell whether to clear
+   * what was typed.
    */
-  async function commit(fn: () => Promise<void>, alvo?: HTMLElement) {
+  async function commit(fn: () => Promise<void>, alvo?: HTMLElement): Promise<boolean> {
     alvo?.classList.add('pendente');
     try {
       await fn();
       await carregar();
+      return true;
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+      return false;
+    } finally {
       alvo?.classList.remove('pendente');
     }
   }
@@ -1755,7 +1766,9 @@ import Wheel from '../components/Wheel.astro';
     const p = pagando;
     const chave = monthKey(cursor.getFullYear(), cursor.getMonth());
     const jaQuitado = pagamentoStatus(p, relatorioAtual(p)).quitado;
-    commit(() => addPayment(p.id, chave, valor), $('pagamento-adicionar')).then(() => {
+    commit(() => addPayment(p.id, chave, valor), $('pagamento-adicionar')).then((ok) => {
+      // A failed write keeps the amount, so the retry is one tap.
+      if (!ok) return;
       input.value = '';
       if (pagando?.id !== p.id) return;
       renderPagamento();
