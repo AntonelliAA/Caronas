@@ -582,6 +582,9 @@ import Wheel from '../components/Wheel.astro';
       await carregar();
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+    } finally {
+      // The reload normally rebuilds the control. When it fails, the old one
+      // stays on screen and would otherwise refuse every tap from then on.
       alvo?.classList.remove('pendente');
     }
   }
