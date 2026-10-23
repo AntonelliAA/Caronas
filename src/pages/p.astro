@@ -512,6 +512,7 @@ import Wheel from '../components/Wheel.astro';
   import {
     addDays,
     brl,
+    dayState,
     isRideDay,
     monthDays,
     monthKey,
@@ -818,6 +819,10 @@ import Wheel from '../components/Wheel.astro';
       const escDia = escalado(dia);
       const rodou = isRideDay(dia, mes.overrides, fer);
       const falta = faltou(dia);
+      // A ride the driver added outside the schedule is on this person's bill,
+      // so it has to be on their calendar too, or the total above counts a
+      // day the grid calls "fora da sua escala".
+      const extra = dayState(eu, dia, marcas().get(dia), rodou) === 'extra';
       const ehHoje = dia === hoje;
       const ehFuturo = dia > hoje;
       const ehFuturoOuHoje = dia >= hoje;
@@ -833,7 +838,14 @@ import Wheel from '../components/Wheel.astro';
       btn.append(diaNumSpan);
 
       let estadoTexto = '';
-      if (!escDia) {
+      if (extra) {
+        btn.classList.add(ehFuturoOuHoje ? 'cal-celula--agendado' : 'cal-celula--ride');
+        estadoTexto = `${rotulo(dia)}: carona extra, fora da sua escala.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = ehFuturoOuHoje ? '●' : '✓';
+        btn.append(icon);
+      } else if (!escDia) {
         btn.classList.add('cal-celula--fora');
         estadoTexto = `${rotulo(dia)}: fora da sua escala.`;
       } else if (!rodou) {
