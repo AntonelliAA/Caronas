@@ -947,6 +947,15 @@ import Wheel from '../components/Wheel.astro';
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
   const hoje = ymd(new Date());
+
+  // Saved to the home screen, this page can sit in memory for days, and
+  // `hoje` is read once at load. Without this, opening it the next morning
+  // showed yesterday as today: the wrong people in the car, and a total that
+  // stopped one day short. A reload is the honest reset, since every screen
+  // and the passenger's write window hang off that one date.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ymd(new Date()) !== hoje) location.reload();
+  });
   let cursor = new Date();
   let pessoas: PassengerRow[] = [];
   let mes: Awaited<ReturnType<typeof loadMonth>>;
