@@ -25,6 +25,15 @@ import Wheel from '../components/Wheel.astro';
       <p>Peça ao motorista para enviar seu link novamente. Cada passageiro possui um link exclusivo.</p>
     </section>
 
+    <!-- Not the same as an invalid link: the link may be fine and the server
+         unreachable, and telling somebody their link is broken sends them to
+         the driver for a new one that would fail the same way. -->
+    <section id="fora" class="estado" hidden>
+      <h1>Não deu para abrir agora</h1>
+      <p>Seu link está certo, mas o servidor não respondeu. Tente de novo em alguns minutos.</p>
+      <button id="tentar" class="btn btn--primary" type="button">Tentar de novo</button>
+    </section>
+
     <div id="app" hidden>
       <section class="cabecalho">
         <h1 id="ola" class="ola"></h1>
@@ -92,6 +101,10 @@ import Wheel from '../components/Wheel.astro';
     margin-top: 3rem;
     color: var(--text-secondary);
     font-size: 0.95rem;
+  }
+
+  .estado .btn {
+    margin-top: 1.25rem;
   }
 
   .estado h1 {
@@ -499,6 +512,7 @@ import Wheel from '../components/Wheel.astro';
   import {
     addDays,
     brl,
+    dayState,
     isRideDay,
     monthDays,
     monthKey,
@@ -517,6 +531,15 @@ import Wheel from '../components/Wheel.astro';
   const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
   const hoje = ymd(new Date());
+
+  // Saved to the home screen, this page can sit in memory for days, and
+  // `hoje` is read once at load. Without this, opening it the next morning
+  // showed yesterday as today: the wrong people in the car, and a total that
+  // stopped one day short. A reload is the honest reset, since every screen
+  // and the passenger's write window hang off that one date.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ymd(new Date()) !== hoje) location.reload();
+  });
   const token = new URLSearchParams(location.search).get('t') ?? '';
   let cursor = new Date();
   let eu: Passenger;
@@ -559,6 +582,9 @@ import Wheel from '../components/Wheel.astro';
       await carregar();
     } catch (e: any) {
       erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+    } finally {
+      // The reload normally rebuilds the control. When it fails, the old one
+      // stays on screen and would otherwise refuse every tap from then on.
       alvo?.classList.remove('pendente');
     }
   }
@@ -582,16 +608,23 @@ import Wheel from '../components/Wheel.astro';
     return `${nomes[d.getDay()]}, ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  /** Only the newest load paints, so quick month taps cannot land out of order. */
+  let carga = 0;
+
   async function carregar() {
+    const minha = ++carga;
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
     const de = dias[0] < hoje ? dias[0] : hoje;
     const ate = dias[dias.length - 1] > addDays(hoje, 14) ? dias[dias.length - 1] : addDays(hoje, 14);
     try {
-      mes = await loadMonth(de, ate, monthKey(ano, m0));
+      const novo = await loadMonth(de, ate, monthKey(ano, m0));
+      if (minha !== carga) return;
+      mes = novo;
       pintar();
     } catch (e: any) {
+      if (minha !== carga) return;
       erro(e?.message ?? 'Não deu para carregar o mês.');
     }
   }
@@ -789,6 +822,10 @@ import Wheel from '../components/Wheel.astro';
       const escDia = escalado(dia);
       const rodou = isRideDay(dia, mes.overrides, fer);
       const falta = faltou(dia);
+      // A ride the driver added outside the schedule is on this person's bill,
+      // so it has to be on their calendar too, or the total above counts a
+      // day the grid calls "fora da sua escala".
+      const extra = dayState(eu, dia, marcas().get(dia), rodou) === 'extra';
       const ehHoje = dia === hoje;
       const ehFuturo = dia > hoje;
       const ehFuturoOuHoje = dia >= hoje;
@@ -804,7 +841,14 @@ import Wheel from '../components/Wheel.astro';
       btn.append(diaNumSpan);
 
       let estadoTexto = '';
-      if (!escDia) {
+      if (extra) {
+        btn.classList.add(ehFuturoOuHoje ? 'cal-celula--agendado' : 'cal-celula--ride');
+        estadoTexto = `${rotulo(dia)}: carona extra, fora da sua escala.`;
+        const icon = document.createElement('span');
+        icon.className = 'cal-celula__status';
+        icon.textContent = ehFuturoOuHoje ? '●' : '✓';
+        btn.append(icon);
+      } else if (!escDia) {
         btn.classList.add('cal-celula--fora');
         estadoTexto = `${rotulo(dia)}: fora da sua escala.`;
       } else if (!rodou) {
@@ -888,11 +932,13 @@ import Wheel from '../components/Wheel.astro';
       $('carregando').hidden = true;
       $('app').hidden = false;
       await carregar();
-    } catch (e: any) {
+    } catch {
       $('carregando').hidden = true;
-      $('invalido').hidden = false;
+      $('fora').hidden = false;
     }
   }
+
+  $('tentar').onclick = () => location.reload();
 
   iniciar();
 </script>
