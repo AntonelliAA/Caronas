@@ -84,6 +84,17 @@ Static output. `dist/` runs anywhere.
   `base: '/caronas'` in [`astro.config.mjs`](astro.config.mjs). Internal links
   use `import.meta.env.BASE_URL` and follow it.
 
+### Keeping the free Supabase project awake
+
+Supabase pauses a free project after a week without traffic. While it is paused,
+the driver cannot sign in and every passenger link fails.
+[`.github/workflows/keepalive.yml`](.github/workflows/keepalive.yml) reads one row
+a day to prevent that, using the same two `PUBLIC_*` repository secrets as the
+deploy. Run it once by hand from the Actions tab to confirm it passes.
+
+If a run fails, the project was probably already paused. Restore it from the
+Supabase dashboard, since a read cannot wake it up.
+
 ---
 
 ## What counts as a ride
