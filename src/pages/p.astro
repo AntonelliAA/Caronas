@@ -582,16 +582,23 @@ import Wheel from '../components/Wheel.astro';
     return `${nomes[d.getDay()]}, ${d.getDate()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
   }
 
+  /** Only the newest load paints, so quick month taps cannot land out of order. */
+  let carga = 0;
+
   async function carregar() {
+    const minha = ++carga;
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
     const de = dias[0] < hoje ? dias[0] : hoje;
     const ate = dias[dias.length - 1] > addDays(hoje, 14) ? dias[dias.length - 1] : addDays(hoje, 14);
     try {
-      mes = await loadMonth(de, ate, monthKey(ano, m0));
+      const novo = await loadMonth(de, ate, monthKey(ano, m0));
+      if (minha !== carga) return;
+      mes = novo;
       pintar();
     } catch (e: any) {
+      if (minha !== carga) return;
       erro(e?.message ?? 'Não deu para carregar o mês.');
     }
   }

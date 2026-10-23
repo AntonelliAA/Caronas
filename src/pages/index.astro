@@ -1046,7 +1046,15 @@ import Wheel from '../components/Wheel.astro';
 
   // ------------------------------------------------------------------ data ---
 
+  /**
+   * Bumped by every load. Two quick taps on the month arrows put two requests
+   * in flight, and whichever answered last used to paint, so the screen could
+   * name October and show September's ledger. Only the newest one paints now.
+   */
+  let carga = 0;
+
   async function carregar() {
+    const minha = ++carga;
     const ano = cursor.getFullYear();
     const m0 = cursor.getMonth();
     const dias = monthDays(ano, m0);
@@ -1056,12 +1064,18 @@ import Wheel from '../components/Wheel.astro';
     const ate = dias[dias.length - 1] > hoje ? dias[dias.length - 1] : hoje;
     if (primeiraCarga) mostrar('carregando');
     try {
-      pessoas = await loadPassengers();
-      mes = await loadMonth(de, ate, monthKey(ano, m0));
+      const [novasPessoas, novoMes] = await Promise.all([
+        loadPassengers(),
+        loadMonth(de, ate, monthKey(ano, m0)),
+      ]);
+      if (minha !== carga) return;
+      pessoas = novasPessoas;
+      mes = novoMes;
       pintar();
       mostrar('app');
       primeiraCarga = false;
     } catch (e: any) {
+      if (minha !== carga) return;
       mostrar('app');
       primeiraCarga = false;
       erro(e?.message ?? 'Não deu para carregar o mês.');
