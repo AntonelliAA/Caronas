@@ -1006,6 +1006,17 @@ import Wheel from '../components/Wheel.astro';
   const erro = (msg: string) => aviso(msg);
 
   /**
+   * A modal sits in the top layer, so the page toast renders behind it. A
+   * write that fails while a sheet is open reports inside that sheet, or the
+   * driver sees nothing at all.
+   */
+  function erroVisivel(msg: string) {
+    if (($('pagamento') as HTMLDialogElement).open) erroPagamento(msg);
+    else if (($('editor') as HTMLDialogElement).open) erroEditor(msg);
+    else erro(msg);
+  }
+
+  /**
    * Every write goes through here, so a failure is never silent. `alvo` is the
    * control that was tapped: it steps back for as long as the request is in
    * flight, which on a phone in a parking garage is the difference between a
@@ -1026,7 +1037,7 @@ import Wheel from '../components/Wheel.astro';
       await carregar();
       return true;
     } catch (e: any) {
-      erro(e?.message ?? 'Não deu para salvar. Tente de novo.');
+      erroVisivel(e?.message ?? 'Não deu para salvar. Tente de novo.');
       return false;
     } finally {
       alvo?.classList.remove('pendente');
@@ -1638,8 +1649,16 @@ import Wheel from '../components/Wheel.astro';
   $('editor-form').addEventListener('submit', (ev) => {
     const acao = (ev as SubmitEvent).submitter as HTMLButtonElement | null;
     if (acao?.value !== 'ok') return;
+    // The sheet closes only once the save lands. Letting the form close it
+    // straight away threw out everything typed whenever the write failed.
+    ev.preventDefault();
+    const nome = ($('f-nome') as HTMLInputElement).value.trim();
+    if (!nome) {
+      erroEditor('Informe o nome.');
+      $('f-nome').focus();
+      return;
+    }
     if (diasSel.size === 0) {
-      ev.preventDefault();
       erroEditor('Escolha pelo menos um dia da semana.');
       $('f-dias').querySelector('button')?.focus();
       return;
@@ -1649,20 +1668,30 @@ import Wheel from '../components/Wheel.astro';
     // as 0 would price every ride this person takes at nothing.
     const fare = parseBrl(($('f-valor') as HTMLInputElement).value);
     if (fare === null) {
-      ev.preventDefault();
       erroEditor('Informe o valor por dia. Por exemplo: 18,50.');
       $('f-valor').focus();
       return;
     }
+    const inicio = ($('f-inicio') as HTMLInputElement).value;
+    const fim = ($('f-fim') as HTMLInputElement).value || null;
+    // An end before the start leaves a person who is never scheduled, and the
+    // ledger just goes quiet about them with no hint why.
+    if (fim && fim < inicio) {
+      erroEditor('O último dia não pode ser antes do primeiro.');
+      $('f-fim').focus();
+      return;
+    }
     const dados = {
       id: editando?.id,
-      name: ($('f-nome') as HTMLInputElement).value.trim(),
+      name: nome,
       weekdays: [...diasSel].sort(),
       fare,
-      start_date: ($('f-inicio') as HTMLInputElement).value,
-      end_date: ($('f-fim') as HTMLInputElement).value || null,
+      start_date: inicio,
+      end_date: fim,
     };
-    commit(() => savePassenger(dados as any));
+    commit(() => savePassenger(dados), acao).then((ok) => {
+      if (ok) ($('editor') as HTMLDialogElement).close();
+    });
   });
 
   // Two presses, both inside the sheet. Removing somebody takes their absences
