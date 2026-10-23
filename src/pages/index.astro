@@ -1138,12 +1138,11 @@ import Wheel from '../components/Wheel.astro';
 
     const forcado = mes.overrides.get(hoje);
     const rodou = forcado !== undefined ? forcado : !fer.has(hoje);
-    const escalados = pessoas.filter(
-      (p) =>
-        p.weekdays.includes(d.getDay()) &&
-        hoje >= p.start_date &&
-        (!p.end_date || hoje <= p.end_date),
-    );
+    // Through dayState rather than the weekly schedule alone: somebody added
+    // for today outside their days is in the car and on the bill, so they
+    // belong on this list too.
+    const estadoHoje = (p: PassengerRow) => dayState(p, hoje, marksOf(p.id).get(hoje), true);
+    const escalados = pessoas.filter((p) => estadoHoje(p) !== 'off');
 
     if (!rodou) {
       const t = document.createElement('p');
@@ -1165,7 +1164,8 @@ import Wheel from '../components/Wheel.astro';
 
     for (const p of escalados) {
       const i = pessoas.indexOf(p);
-      const faltou = marksOf(p.id).get(hoje) === false;
+      const estado = estadoHoje(p);
+      const faltou = estado === 'absent';
       const b = document.createElement('button');
       b.type = 'button';
       b.className = 'hoje__pessoa';
@@ -1182,7 +1182,8 @@ import Wheel from '../components/Wheel.astro';
       b.onclick = () => {
         vibrar(15);
         ultimaMarca = `${p.id}:${hoje}`;
-        commit(() => setMark(p.id, hoje, faltou ? null : false), b);
+        // An extra ride has no absence to mark: taking them off is undoing it.
+        commit(() => setMark(p.id, hoje, nextMark(estado)), b);
       };
       const li = document.createElement('li');
       li.append(b);
