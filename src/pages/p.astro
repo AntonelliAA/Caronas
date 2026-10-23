@@ -25,6 +25,15 @@ import Wheel from '../components/Wheel.astro';
       <p>Peça ao motorista para enviar seu link novamente. Cada passageiro possui um link exclusivo.</p>
     </section>
 
+    <!-- Not the same as an invalid link: the link may be fine and the server
+         unreachable, and telling somebody their link is broken sends them to
+         the driver for a new one that would fail the same way. -->
+    <section id="fora" class="estado" hidden>
+      <h1>Não deu para abrir agora</h1>
+      <p>Seu link está certo, mas o servidor não respondeu. Tente de novo em alguns minutos.</p>
+      <button id="tentar" class="btn btn--primary" type="button">Tentar de novo</button>
+    </section>
+
     <div id="app" hidden>
       <section class="cabecalho">
         <h1 id="ola" class="ola"></h1>
@@ -92,6 +101,10 @@ import Wheel from '../components/Wheel.astro';
     margin-top: 3rem;
     color: var(--text-secondary);
     font-size: 0.95rem;
+  }
+
+  .estado .btn {
+    margin-top: 1.25rem;
   }
 
   .estado h1 {
@@ -904,11 +917,13 @@ import Wheel from '../components/Wheel.astro';
       $('carregando').hidden = true;
       $('app').hidden = false;
       await carregar();
-    } catch (e: any) {
+    } catch {
       $('carregando').hidden = true;
-      $('invalido').hidden = false;
+      $('fora').hidden = false;
     }
   }
+
+  $('tentar').onclick = () => location.reload();
 
   iniciar();
 </script>
